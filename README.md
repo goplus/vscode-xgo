@@ -62,7 +62,7 @@ You are ready to Go :-) &nbsp;&nbsp; 🎉🎉🎉
 * Start a [GitHub discussion](https://github.com/goplus/vscode-gop/discussions)
   or get help on [Stack Overflow].
 * Explore XGo language resources on [XGo Quick Start](https://github.com/goplus/gop/blob/main/doc/docs.md) and
-  [XGo tutorial](https://tutorial.goplus.org/).
+  [XGo tutorial](https://tutorial.xgo.dev/).
 
 If you are new to Go/XGo, [this article](https://github.com/goplus/gop/blob/main/doc/docs.md) provides
 the overview on XGo code organization and basic `gop` commands. Watch ["Getting
