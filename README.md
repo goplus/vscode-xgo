@@ -7,7 +7,7 @@
 
 [The VS Code Go/XGo extension](https://marketplace.visualstudio.com/items?itemName=goplus.gop)
 provides rich language support for the
-[Go programming language](https://go.dev/) and the [XGo programming language](https://gop.dev/).
+[Go programming language](https://go.dev/) and the [XGo programming language](https://xgo.dev/).
 
 Please [file a new issue](https://github.com/goplus/vscode-gop/issues/new/choose) if you encounter any problems.
 
@@ -20,7 +20,7 @@ extension fits your needs and enhances your development experience.
 
 1.  Install [Go](https://go.dev) 1.18 or newer if you haven't already.
 
-1.  Install [XGo](https://gop.dev) 1.1.13 or newer if you haven't already.
+1.  Install [XGo](https://xgo.dev) 1.1.13 or newer if you haven't already.
 
 1.  Install the [VS Code Go/XGo extension].
 
