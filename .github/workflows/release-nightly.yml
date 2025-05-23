@@ -29,7 +29,7 @@ jobs:
       - name: Setup Go/Go+
         uses: goplus/setup-goplus@v1.1.0
         with:
-         go-version: '1.23'
+         go-version: '1.21'
          gop-version: "main"
          check-latest: true
          cache: true
