@@ -1,15 +1,15 @@
 {
   "name": "gop",
-  "displayName": "Go+ (beta)",
-  "version": "0.8.3",
+  "displayName": "XGo (beta)",
+  "version": "0.8.5",
   "preview": false,
   "publisher": "goplus",
-  "description": "Rich Go/Go+ language support for Visual Studio Code",
+  "description": "Rich Go/XGo language support for Visual Studio Code",
   "author": {
     "name": "GoPlus Team"
   },
   "license": "MIT",
-  "icon": "media/goplus-logo-blue.png",
+  "icon": "media/logo_blue_line.png",
   "categories": [
     "Programming Languages",
     "Snippets",
@@ -106,6 +106,7 @@
     "workspaceContains:**/*.gmx",
     "workspaceContains:**/*.gox",
     "workspaceContains:**/*.gsh",
+    "workspaceContains:**/*.yap",
     "onDebugInitialConfigurations",
     "onDebugResolve:go",
     "onDebugResolve:gop",
@@ -146,14 +147,15 @@
           ".rdx",
           ".gmx",
           ".gox",
-          ".gsh"
+          ".gsh",
+          ".yap"
         ],
         "aliases": [
           "Goplus"
         ],
         "icon": {
-          "light": "./media/goplus-file-icon-black.svg",
-          "dark": "./media/goplus-file-icon-white.svg"
+          "light": "./media/logo_black_line.svg",
+          "dark": "./media/logo_write_line.svg"
         },
         "configuration": "./languages/gop.language-configuration.json"
       },
@@ -2969,7 +2971,7 @@
         {
           "id": "gop.explorer",
           "name": "gop",
-          "icon": "media/goplus-logo-white.svg",
+          "icon": "media/logo_write_line.svg",
           "when": "gop.showExplorer"
         }
       ],
