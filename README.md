@@ -1,13 +1,13 @@
-# Go/Go+ for Visual Studio Code
+# Go/XGo for Visual Studio Code
 
 [![GitHub release](https://img.shields.io/github/v/tag/goplus/vscode-gop.svg?label=release)](https://github.com/goplus/vscode-gop/releases)
-[![Language](https://img.shields.io/badge/language-Go+-blue.svg)](https://github.com/goplus/gop)
+[![Language](https://img.shields.io/badge/language-XGo-blue.svg)](https://github.com/goplus/gop)
 
 <!--TODO: We should add a badge for the build status or link to the build dashboard.-->
 
-[The VS Code Go/Go+ extension](https://marketplace.visualstudio.com/items?itemName=goplus.gop)
+[The VS Code Go/XGo extension](https://marketplace.visualstudio.com/items?itemName=goplus.gop)
 provides rich language support for the
-[Go programming language](https://go.dev/) and the [Go+ programming language](https://gop.dev/).
+[Go programming language](https://go.dev/) and the [XGo programming language](https://gop.dev/).
 
 Please [file a new issue](https://github.com/goplus/vscode-gop/issues/new/choose) if you encounter any problems.
 
@@ -15,18 +15,18 @@ Please [file a new issue](https://github.com/goplus/vscode-gop/issues/new/choose
 ## Quick Start
 
 Welcome! 👋🏻<br/>
-Whether you are new to Go/Go+ or an experienced Go/Go+ developer, we hope this
+Whether you are new to Go/XGo or an experienced Go/XGo developer, we hope this
 extension fits your needs and enhances your development experience.
 
 1.  Install [Go](https://go.dev) 1.18 or newer if you haven't already.
 
-1.  Install [Go+](https://gop.dev) 1.1.13 or newer if you haven't already.
+1.  Install [XGo](https://gop.dev) 1.1.13 or newer if you haven't already.
 
-1.  Install the [VS Code Go/Go+ extension].
+1.  Install the [VS Code Go/XGo extension].
 
-1.  Open any directory or workspace containing Go/Go+ code to automatically activate the
-    extension. The [Go/Go+ status bar](https://github.com/goplus/vscode-gop/wiki/ui) 
-    appears in the bottom left corner of the window and displays your Go/Go+ version.
+1.  Open any directory or workspace containing Go/XGo code to automatically activate the
+    extension. The [Go/XGo status bar](https://github.com/goplus/vscode-gop/wiki/ui) 
+    appears in the bottom left corner of the window and displays your Go/XGo version.
 
 1.  The extension depends on `go`, `gop`, `goxls`, `dlv` and other optional tools. If
     any of the dependencies are missing, the ⚠️ `Analysis Tools Missing` warning
@@ -46,7 +46,7 @@ You are ready to Go :-) &nbsp;&nbsp; 🎉🎉🎉
 
 ## What's next
 
-* Explore more [features][full feature breakdown] of the VS Code Go/Go+ extension.
+* Explore more [features][full feature breakdown] of the VS Code Go/XGo extension.
 * View the
   [settings documentation](https://github.com/goplus/vscode-gop/wiki/settings)
 	and [advanced topics](https://github.com/golang/vscode-go/wiki/advanced) to
@@ -61,13 +61,13 @@ You are ready to Go :-) &nbsp;&nbsp; 🎉🎉🎉
   problems with the extension.
 * Start a [GitHub discussion](https://github.com/goplus/vscode-gop/discussions)
   or get help on [Stack Overflow].
-* Explore Go+ language resources on [Go+ Quick Start](https://github.com/goplus/gop/blob/main/doc/docs.md) and
-  [Go+ tutorial](https://tutorial.goplus.org/).
+* Explore XGo language resources on [XGo Quick Start](https://github.com/goplus/gop/blob/main/doc/docs.md) and
+  [XGo tutorial](https://tutorial.goplus.org/).
 
-If you are new to Go/Go+, [this article](https://github.com/goplus/gop/blob/main/doc/docs.md) provides
-the overview on Go+ code organization and basic `gop` commands. Watch ["Getting
-started with VS Code Go/Go+"] for an explanation of how to build your first Go/Go+
-application using VS Code Go/Go+.
+If you are new to Go/XGo, [this article](https://github.com/goplus/gop/blob/main/doc/docs.md) provides
+the overview on XGo code organization and basic `gop` commands. Watch ["Getting
+started with VS Code Go/XGo"] for an explanation of how to build your first Go/XGo
+application using VS Code Go/XGo.
 
 ## Feature highlights
 
@@ -106,17 +106,17 @@ by turning on [Goxls' `ui.semanticTokens` setting](https://github.com/goplus/vsc
 
 ## Setting up your workspace
 
-The VS Code Go/Go+ extension supports both `GOPATH` and Go/Go+ modules modes.
+The VS Code Go/XGo extension supports both `GOPATH` and Go/XGo modules modes.
 
-[Go/Go+ modules](https://golang.org/ref/mod) are used to manage dependencies in
-recent versions of Go/Go+. Modules replace the `GOPATH`-based approach to specifying
+[Go/XGo modules](https://golang.org/ref/mod) are used to manage dependencies in
+recent versions of Go/XGo. Modules replace the `GOPATH`-based approach to specifying
 which source files are used in a given build, and they are the default build
 mode in go1.16+. We highly recommend Go development in module mode. If you are
 working on existing projects, please consider migrating to modules.
 
 Unlike the traditional `GOPATH` mode, module mode does not require the workspace
 to be located under `GOPATH` nor to use a specific structure. A module is
-defined by a directory tree of Go/Go+ source files with a `go.mod` or `gop.mod` file
+defined by a directory tree of Go/XGo source files with a `go.mod` or `gop.mod` file
 in the tree's root directory.
 
 Your project may involve one or more modules. If you are working with multiple
@@ -126,9 +126,9 @@ by using [Workspace Folders]. See the
 
 ## Contributing
 
-We welcome your contributions and thank you for working to improve the Go/Go+
+We welcome your contributions and thank you for working to improve the Go/XGo
 development experience in VS Code. If you would like to help work on the VS Code
-Go/Go+ extension, see our
+Go/XGo extension, see our
 [contribution guide](https://github.com/goplus/vscode-gop/wiki/contributing) to
 learn how to build and run the VS Code Go extension locally and contribute to
 the project.
@@ -139,7 +139,7 @@ the project.
 
 [Stack Overflow]: https://stackoverflow.com/questions/tagged/go+visual-studio-code
 [Managing extensions in VS Code]: https://code.visualstudio.com/docs/editor/extension-gallery
-[VS Code Go/Go+ extension]: https://marketplace.visualstudio.com/items?itemName=goplus.gop
+[VS Code Go/XGo extension]: https://marketplace.visualstudio.com/items?itemName=goplus.gop
 [IntelliSense]: https://github.com/goplus/vscode-gop/wiki/features#intellisense
 [Code navigation]: https://github.com/goplus/vscode-gop/wiki/features#code-navigation
 [Code editing]: https://github.com/goplus/vscode-gop/wiki/features#code-editing
