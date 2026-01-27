@@ -185,7 +185,7 @@ export function scheduleGoplsSuggestions(goCtx: GoExtensionContext) {
 				const toolVersion = { ...tool, version: versionToUpdate }; // ToolWithVersion
 				await installTools([toolVersion], goVersion, true);
 			} else {
-				console.log(`goxls ${versionToUpdate} is too new, try to update later`);
+				console.log(`xgols ${versionToUpdate} is too new, try to update later`);
 			}
 		} else {
 			promptForUpdatingTool(tool.name, versionToUpdate);
@@ -1081,9 +1081,9 @@ export async function shouldUpdateLanguageServer(
 	if (!cfg) {
 		return null;
 	}
-	// Only support updating gopls/goxls for now.
+	// Only support updating gopls/xgols for now.
 	if (
-		(tool.name !== 'gopls' && tool.name !== 'goxls') ||
+		(tool.name !== 'gopls' && tool.name !== 'xgols') ||
 		(!mustCheck && (cfg.checkForUpdates === 'off' || extensionInfo.isInCloudIDE))
 	) {
 		return null;
@@ -1148,7 +1148,7 @@ export async function shouldUpdateLanguageServer(
 }
 
 export const conf = {
-	lsName: 'goxls'
+	lsName: 'xgols'
 };
 
 /**
@@ -1179,7 +1179,7 @@ export async function suggestUpdateGopls(tool: Tool, cfg: LanguageServerConfig):
 	}
 
 	const updateMsg =
-		"'goxls' is now enabled by default and you are using an old version. Please [update 'goxls'](https://github.com/goplus/goxls/blob/main/README.md#installation) for the best experience.";
+		"'xgols' is now enabled by default and you are using an old version. Please [update 'xgols'](https://github.com/goplus/xgols/blob/main/README.md#installation) for the best experience.";
 	promptForUpdatingTool(tool.name, latestVersion, false, updateMsg);
 }
 

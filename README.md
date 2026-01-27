@@ -18,9 +18,9 @@ Welcome! 👋🏻<br/>
 Whether you are new to Go/XGo or an experienced Go/XGo developer, we hope this
 extension fits your needs and enhances your development experience.
 
-1.  Install [Go](https://go.dev) 1.18 or newer if you haven't already.
+1.  Install [Go](https://go.dev) 1.19 or newer if you haven't already.
 
-1.  Install [XGo](https://xgo.dev) 1.1.13 or newer if you haven't already.
+1.  Install [XGo](https://xgo.dev) 1.5.x or newer if you haven't already.
 
 1.  Install the [VS Code Go/XGo extension].
 
@@ -28,7 +28,7 @@ extension fits your needs and enhances your development experience.
     extension. The [Go/XGo status bar](https://github.com/goplus/vscode-gop/wiki/ui) 
     appears in the bottom left corner of the window and displays your Go/XGo version.
 
-1.  The extension depends on `go`, `gop`, `goxls`, `dlv` and other optional tools. If
+1.  The extension depends on `go`, `xgo`, `goxls`, `dlv` and other optional tools. If
     any of the dependencies are missing, the ⚠️ `Analysis Tools Missing` warning
     is displayed. Click on the warning to download dependencies.
 
