@@ -44,16 +44,15 @@ var tools = []struct {
 	{"github.com/cweill/gotests/gotests", "", false, nil},
 	{"github.com/davidrjenni/reftools/cmd/fillstruct", "", false, nil},
 	{"github.com/haya14busa/goplay/cmd/goplay", "", false, nil},
-	// Skip gocode variants: replaced by gopls/xgols
-	// {"github.com/stamblerre/gocode", "gocode-gomod", false, nil},
-	// {"github.com/mdempsky/gocode", "", false, nil},
+	{"github.com/stamblerre/gocode", "gocode-gomod", false, nil},
 	// Skip tools replaced by gopls/xgols and potentially incompatible with older Go versions
+	// {"github.com/mdempsky/gocode", "", false, nil},
 	// {"github.com/acroca/go-symbols", "", false, nil},
-	// {"github.com/ramya-rao-a/go-outline", "", false, nil},
-	// {"github.com/rogpeppe/godef", "", false, nil},
-	// {"github.com/sqs/goreturns", "", false, nil},
-	// {"github.com/uudashr/gopkgs/v2/cmd/gopkgs", "", false, nil},
-	// {"github.com/zmb3/gogetdoc", "", false, nil},
+	{"github.com/ramya-rao-a/go-outline", "", false, nil},
+	{"github.com/rogpeppe/godef", "", false, nil},
+	{"github.com/sqs/goreturns", "", false, nil},
+	{"github.com/uudashr/gopkgs/v2/cmd/gopkgs", "", false, nil},
+	{"github.com/zmb3/gogetdoc", "", false, nil},
 	{"honnef.co/go/tools/cmd/staticcheck", "", false, []finalVersion{{16, "v0.2.2"}, {18, "v0.3.3"}}},
 	{"golang.org/x/tools/cmd/gorename", "", false, nil},
 	// TODO(golang/vscode-go#2999): v1.21.1 breaks dlv-dap testing.
