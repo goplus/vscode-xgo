@@ -28,7 +28,7 @@ extension fits your needs and enhances your development experience.
     extension. The [Go/XGo status bar](https://github.com/goplus/vscode-gop/wiki/ui) 
     appears in the bottom left corner of the window and displays your Go/XGo version.
 
-1.  The extension depends on `go`, `xgo`, `goxls`, `dlv` and other optional tools. If
+1.  The extension depends on `go`, `xgo`, `xgols`, `dlv` and other optional tools. If
     any of the dependencies are missing, the ⚠️ `Analysis Tools Missing` warning
     is displayed. Click on the warning to download dependencies.
 
@@ -99,9 +99,9 @@ extension.
 
 We recommend enabling
 [semantic highlighting](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide)
-by turning on [Goxls' `ui.semanticTokens` setting](https://github.com/goplus/vscode-gop/wiki/settings#uisemantictokens).
+by turning on [xgols' `ui.semanticTokens` setting](https://github.com/goplus/vscode-xgo/wiki/settings#uisemantictokens).
     ```
-    "goxls": { "ui.semanticTokens": true }
+    "xgols": { "ui.semanticTokens": true }
     ```
 
 ## Setting up your workspace

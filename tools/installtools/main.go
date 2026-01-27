@@ -41,7 +41,7 @@ var tools = []struct {
 	// TODO: auto-generate based on allTools.ts.in.
 	{"golang.org/x/tools/gopls", "", true, nil},
 	{"github.com/goplus/xgols", "", false, []finalVersion{{xgoVer, "latest"}}},
-	{"github.com/acroca/go-symbols", "", false, nil},
+	{"github.com/acroca/go-symbols", "", false, []finalVersion{{21, "v0.1.0"}}},
 	{"github.com/cweill/gotests/gotests", "", false, nil},
 	{"github.com/davidrjenni/reftools/cmd/fillstruct", "", false, nil},
 	{"github.com/haya14busa/goplay/cmd/goplay", "", false, nil},
