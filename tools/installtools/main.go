@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	gopVer = 0 // use `gop` instead of `go`
+	xgoVer = 0 // use `xgo` instead of `go`
 )
 
 // finalVersion encodes the fact that the specified tool version
@@ -40,13 +40,14 @@ var tools = []struct {
 }{
 	// TODO: auto-generate based on allTools.ts.in.
 	{"golang.org/x/tools/gopls", "", true, nil},
-	{"github.com/goplus/goxls", "", false, []finalVersion{{gopVer, "latest"}}},
-	{"github.com/acroca/go-symbols", "", false, nil},
+	{"github.com/goplus/xgols", "", false, []finalVersion{{xgoVer, "latest"}}},
 	{"github.com/cweill/gotests/gotests", "", false, nil},
 	{"github.com/davidrjenni/reftools/cmd/fillstruct", "", false, nil},
 	{"github.com/haya14busa/goplay/cmd/goplay", "", false, nil},
 	{"github.com/stamblerre/gocode", "gocode-gomod", false, nil},
-	{"github.com/mdempsky/gocode", "", false, nil},
+	// Skip tools replaced by gopls/xgols and potentially incompatible with older Go versions
+	// {"github.com/mdempsky/gocode", "", false, nil},
+	// {"github.com/acroca/go-symbols", "", false, nil},
 	{"github.com/ramya-rao-a/go-outline", "", false, nil},
 	{"github.com/rogpeppe/godef", "", false, nil},
 	{"github.com/sqs/goreturns", "", false, nil},
@@ -56,15 +57,15 @@ var tools = []struct {
 	{"golang.org/x/tools/cmd/gorename", "", false, nil},
 	// TODO(golang/vscode-go#2999): v1.21.1 breaks dlv-dap testing.
 	{"github.com/go-delve/delve/cmd/dlv", "", false, []finalVersion{{16, "v1.8.3"}, {17, "v1.9.1"}, {100, "v1.21.0"}}},
-	{"github.com/goplus/gopdlv", "", false, []finalVersion{{gopVer, "latest"}}},
+	{"github.com/goplus/gopdlv", "", false, []finalVersion{{xgoVer, "latest"}}},
 }
 
 // pickVersion returns the version to install based on the supported
 // version list.
 func pickVersion(goMinorVersion int, versions []finalVersion, defaultVersion string) (string, bool) {
 	for _, v := range versions {
-		if v.goMinorVersion == gopVer {
-			return v.version, true // use gop
+		if v.goMinorVersion == xgoVer {
+			return v.version, true // use xgo
 		}
 		if goMinorVersion <= v.goMinorVersion {
 			return v.version, false
@@ -149,11 +150,16 @@ func installTools(binDir string, goMinorVersion int) error {
 	}
 	env := append(os.Environ(), "GO111MODULE=on")
 	for _, tool := range tools {
-		ver, useGop := pickVersion(goMinorVersion, tool.versions, pickLatest(tool.path, tool.preferPreview))
+		ver, useXgo := pickVersion(goMinorVersion, tool.versions, pickLatest(tool.path, tool.preferPreview))
 		path := tool.path + "@" + ver
 		cmd := exec.Command("go", installCmd, path)
-		if useGop {
-			cmd = exec.Command("gop", "install", path)
+		if useXgo {
+			// Prefer xgo over gop
+			if _, err := exec.LookPath("xgo"); err == nil {
+				cmd = exec.Command("xgo", "install", path)
+			} else {
+				cmd = exec.Command("gop", "install", path)
+			}
 		}
 		cmd.Env = env
 		cmd.Dir = dir

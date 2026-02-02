@@ -197,11 +197,11 @@ export async function installTools(
 			tool,
 			goForInstall,
 			envForTools,
-			tool.name === 'goxls' || tool.name === 'gopdlv'
+			tool.name === 'xgols' || tool.name === 'gopdlv'
 		);
 		if (failed) {
 			failures.push({ tool, reason: failed });
-		} else if (tool.name === 'goxls' || tool.name === 'gopls') {
+		} else if (tool.name === 'xgols' || tool.name === 'gopls') {
 			// Restart the language server if a new binary has been installed.
 			vscode.commands.executeCommand('gop.languageserver.restart', RestartReason.INSTALLATION);
 		}
@@ -439,8 +439,14 @@ export async function promptForMissingTool(toolName: string) {
 		installOptions.push('Install All');
 	}
 	let goCmd = 'go';
-	if (tool.name == 'goxls' || tool.name == 'gopdlv') {
-		goCmd = 'gop';
+	if (tool.name == 'xgols' || tool.name == 'gopdlv') {
+		// Prefer xgo over gop
+		const xgoPath = getBinPath('xgo');
+		if (xgoPath !== 'xgo') {
+			goCmd = 'xgo';
+		} else {
+			goCmd = 'gop';
+		}
 	}
 	const cmd = `${goCmd} install -v ${getImportPathWithVersion(tool, undefined, goVersion)}`;
 	const selected = await vscode.window.showErrorMessage(
@@ -492,7 +498,7 @@ export async function promptForUpdatingTool(
 	}
 
 	let choices: string[] = ['Update'];
-	if (toolName === 'goxls') {
+	if (toolName === 'xgols') {
 		choices = ['Always Update', 'Update Once', 'Release Notes'];
 	}
 	if (toolName === 'gopdlv') {
