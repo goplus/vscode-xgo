@@ -1,7 +1,7 @@
 {
   "name": "gop",
   "displayName": "XGo (beta)",
-  "version": "0.8.5",
+  "version": "0.8.6",
   "preview": false,
   "publisher": "goplus",
   "description": "Rich Go/XGo language support for Visual Studio Code",

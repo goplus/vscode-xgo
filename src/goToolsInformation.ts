@@ -201,19 +201,19 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		description: 'Linter',
 		defaultVersion: 'v1.3.2'
 	},
-	'goxls': {
-		name: 'goxls', // goxls: Go+
-		importPath: 'github.com/goplus/goxls',
-		modulePath: 'github.com/goplus/goxls',
+	'xgols': {
+		name: 'xgols', // xgols: Go+
+		importPath: 'github.com/goplus/xgols',
+		modulePath: 'github.com/goplus/xgols',
 		replacedByGopls: false, // lol
 		isImportant: true,
 		description: 'Go+ Language Server',
 		usePrereleaseInPreviewMode: true,
-		minimumGoVersion: semver.coerce('1.18'),
-		latestVersion: semver.parse('v0.13.3'),
-		latestVersionTimestamp: moment('2023-11-10', 'YYYY-MM-DD'),
-		latestPrereleaseVersion: semver.parse('v0.13.3'),
-		latestPrereleaseVersionTimestamp: moment('2023-11-10', 'YYYY-MM-DD')
+		minimumGoVersion: semver.coerce('1.19'),
+		latestVersion: semver.parse('v0.14.0'),
+		latestVersionTimestamp: moment('2025-01-27', 'YYYY-MM-DD'),
+		latestPrereleaseVersion: semver.parse('v0.14.0'),
+		latestPrereleaseVersionTimestamp: moment('2025-01-27', 'YYYY-MM-DD')
 	},
 	'gopls': {
 		name: 'gopls',

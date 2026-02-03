@@ -45,7 +45,7 @@ jobs:
         run: |
           cd ..
           go version
-          go run ./vscode-gop/tools/installtools/main.go
+          go run ./vscode-xgo/tools/installtools/main.go
         env:
           GO111MODULE: on
           EXT: "${{ matrix.os == 'windows-latest' && '.exe' || ''}}"

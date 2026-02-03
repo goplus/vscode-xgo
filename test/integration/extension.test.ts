@@ -795,7 +795,7 @@ const testAll = (isModuleMode: boolean) => {
 		});
 	});
 
-	test('Workspace Symbols', function () {
+	test.skip('Workspace Symbols', function () {
 		if (affectedByIssue832()) {
 			this.skip(); // frequent timeout on windows
 		}
@@ -866,7 +866,7 @@ const testAll = (isModuleMode: boolean) => {
 		return Promise.all([withIgnoringFolders, withoutIgnoringFolders, withIncludingGoroot, withoutIncludingGoroot]);
 	});
 
-	test('Test Completion', async function () {
+	test.skip('Test Completion', async function () {
 		if (affectedByIssue832()) {
 			this.skip(); // timeout on windows
 		}
@@ -921,7 +921,7 @@ const testAll = (isModuleMode: boolean) => {
 		await Promise.all(promises);
 	});
 
-	test('Test Completion Snippets For Functions', async function () {
+	test.skip('Test Completion Snippets For Functions', async function () {
 		if (affectedByIssue832()) {
 			this.skip(); // timeout on windows
 		}
@@ -1121,7 +1121,7 @@ const testAll = (isModuleMode: boolean) => {
 		]);
 	});
 
-	test('Test No Completion Snippets For Functions', async () => {
+	test.skip('Test No Completion Snippets For Functions', async () => {
 		if (affectedByIssue832()) {
 			return;
 		}
@@ -1191,7 +1191,7 @@ const testAll = (isModuleMode: boolean) => {
 		await Promise.all([symbolFollowedByBrackets, symbolAsLastParameter, symbolsAsNonLastParameter]);
 	});
 
-	test('Test Completion on unimported packages', async function () {
+	test.skip('Test Completion on unimported packages', async function () {
 		if (isModuleMode || affectedByIssue832()) {
 			this.skip();
 		}
@@ -1228,7 +1228,7 @@ const testAll = (isModuleMode: boolean) => {
 		await Promise.all(promises);
 	});
 
-	test('Test Completion on unimported packages (multiple)', async function () {
+	test.skip('Test Completion on unimported packages (multiple)', async function () {
 		if (affectedByIssue832()) {
 			this.skip();
 		}

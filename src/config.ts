@@ -15,8 +15,8 @@ export const getGoConfig = (uri?: vscode.Uri) => {
 
 /** getGoplsConfig returns the user's gopls configuration. */
 export function getGoplsConfig(uri?: vscode.Uri) {
-	// goxls: conflicts fix (getConfig)
-	return getConfig('goxls', uri);
+	// xgols: conflicts fix (getConfig)
+	return getConfig('xgols', uri);
 }
 
 function getConfig(section: string, uri?: vscode.Uri | null) {
