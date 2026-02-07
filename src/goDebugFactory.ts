@@ -622,7 +622,7 @@ function spawnDlvDapServerProcess(
 function getSpawnConfig(launchAttachArgs: vscode.DebugConfiguration, logErr: (msg: string) => void) {
 	// launchArgsEnv is user-requested env vars (envFiles + env + toolsEnvVars).
 	const env = launchAttachArgs.env;
-	const dlvName = 'gopdlv';
+	const dlvName = 'xgodlv';
 	const dlvPath = launchAttachArgs.dlvToolPath ?? dlvName;
 
 	if (!fs.existsSync(dlvPath)) {
@@ -633,7 +633,7 @@ function getSpawnConfig(launchAttachArgs: vscode.DebugConfiguration, logErr: (ms
 			} or ${envPath}\n` +
 				'Follow the setup instruction in https://github.com/goplus/vscode-xgo/blob/xgo/docs/debugging.md#getting-started.\n'
 		);
-		throw new Error('Cannot find Go/XGo debugger (gopdlv dap)');
+		throw new Error('Cannot find Go/XGo debugger (xgodlv dap)');
 	}
 	let dir = getWorkspaceFolderPath();
 	if (launchAttachArgs.request === 'launch' && launchAttachArgs['__buildDir']) {

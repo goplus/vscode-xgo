@@ -2303,7 +2303,7 @@ const testAll = (ctx: Mocha.Context, isDlvDap: boolean, withConsole?: string) =>
 	}
 };
 
-/* goxls: disable tests
+/* xgols: disable tests
 suite('Go Debug Adapter Tests (legacy)', function () {
 	if (affectedByIssue832()) {
 		return;

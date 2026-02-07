@@ -57,7 +57,7 @@ var tools = []struct {
 	{"golang.org/x/tools/cmd/gorename", "", false, nil},
 	// TODO(golang/vscode-go#2999): v1.21.1 breaks dlv-dap testing.
 	{"github.com/go-delve/delve/cmd/dlv", "", false, []finalVersion{{16, "v1.8.3"}, {17, "v1.9.1"}, {100, "v1.21.0"}}},
-	{"github.com/goplus/gopdlv", "", false, []finalVersion{{xgoVer, "latest"}}},
+	{"github.com/goplus/xgodlv", "", false, []finalVersion{{xgoVer, "latest"}}},
 }
 
 // pickVersion returns the version to install based on the supported

@@ -17,7 +17,7 @@ import { isModSupported } from './goModules';
 import { getImportPathToFolder } from './goPackages';
 import { getTestFlags, goTest, showTestOutput, TestConfig } from './testUtils';
 import { fixDriveCasingInWindows } from './utils/pathUtils';
-import { isXGoFile } from './util';
+import { isXGoFile, isXGoTestFile } from './util';
 
 let gutterSvgs: { [key: string]: string };
 
@@ -379,14 +379,11 @@ function setCoverageDataByFilePath(filePath: string, data: CoverageData) {
  * @param editor
  */
 export function applyCodeCoverage(editor: vscode.TextEditor | undefined) {
-	// goxls: check go and go+
+	// xgols: check Go and XGo
 	if (
 		!editor ||
 		(editor.document.languageId !== 'go' && editor.document.languageId !== 'gop') ||
-		editor.document.fileName.endsWith('_test.go') ||
-		editor.document.fileName.endsWith('_test.xgo') ||
-		editor.document.fileName.endsWith('test.gox') ||
-		editor.document.fileName.endsWith('_test.gop')
+		isXGoTestFile(editor.document.fileName)
 	) {
 		return;
 	}

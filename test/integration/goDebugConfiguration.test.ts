@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-prototype-builtins */
 
-/* goxls: disable tests
+/* xgols: disable tests
 import assert = require('assert');
 import fs = require('fs');
 import os = require('os');

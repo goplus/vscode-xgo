@@ -165,7 +165,7 @@ export function scheduleGoplsSuggestions(goCtx: GoExtensionContext) {
 	const usingGo = (): boolean => {
 		return vscode.workspace.textDocuments.some((doc) => doc.languageId === 'go');
 	};
-	/* goxls: Go+
+	/* xgols: XGo
 	const usingGop = (): boolean => {
 		return vscode.workspace.textDocuments.some((doc) => doc.languageId === 'gop');
 	};
@@ -896,7 +896,7 @@ async function passLinkifyShowMessageToGopls(cfg: LanguageServerConfig, goplsCon
 	const version = semver.parse(goplsVersion.version);
 	// The linkifyShowMessage option was added in v0.14.0-pre.1.
 	if ((version?.compare('0.13.99') ?? 1) > 0) {
-		// goxls: disable
+		// xgols: disable
 		//goplsConfig['linkifyShowMessage'] = true;
 	}
 	return goplsConfig;
@@ -1034,7 +1034,7 @@ export function getLanguageServerToolPath(): string | undefined {
 		return;
 	}
 	// Get the path to gopls (getBinPath checks for alternate tools).
-	// goxls: use goxls instead of gopls
+	// xgols: use xgols instead of gopls
 	// const goplsBinaryPath = getBinPath('gopls');
 	const goplsBinaryPath = getBinPath(conf.lsName);
 	if (path.isAbsolute(goplsBinaryPath)) {

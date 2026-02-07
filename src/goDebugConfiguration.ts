@@ -40,7 +40,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			vscode.debug.registerDebugConfigurationProvider('gop', new GoDebugConfigurationProvider('gop'))
 		);
 		const registerCommand = createRegisterCommand(ctx, goCtx);
-		// goxls: conflicts fix
+		// xgols: conflicts fix
 		registerCommand('gop.debug.pickProcess', () => pickProcess);
 		registerCommand('gop.debug.pickGoProcess', () => pickGoProcess);
 	}
@@ -290,7 +290,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			}
 		}
 
-		const dlvName = 'gopdlv';
+		const dlvName = 'xgodlv';
 		const dlvToolPath = getBinPath(dlvName);
 		if (!path.isAbsolute(dlvToolPath)) {
 			// If user has not already declined to install this tool,

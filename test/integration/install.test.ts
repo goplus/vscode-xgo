@@ -4,7 +4,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------*/
 
-/* goxls: disable tests
+/* xgols: disable tests
 import AdmZip = require('adm-zip');
 import assert from 'assert';
 import * as config from '../../src/config';

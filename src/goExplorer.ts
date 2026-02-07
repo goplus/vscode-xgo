@@ -29,7 +29,7 @@ export class GoExplorerProvider implements vscode.TreeDataProvider<vscode.TreeIt
 			commands: { registerCommand, executeCommand }
 		} = vscode;
 		ctx.subscriptions.push(
-			// goxls: conflicts fix (registerTreeDataProvider & registerCommand)
+			// xgols: conflicts fix (registerTreeDataProvider & registerCommand)
 			registerTreeDataProvider('gop.explorer', provider),
 			registerCommand('gop.explorer.refresh', () => provider.update(true)),
 			registerCommand('gop.explorer.open', (item) => provider.open(item)),

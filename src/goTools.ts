@@ -172,7 +172,7 @@ export function getConfiguredTools(
 	// There doesn't seem to be a good way to check if the mips and s390
 	// families are 64-bit, so just try to install it and hope for the best.
 	if (process.arch.match(/^(mips|mipsel|ppc64|s390|s390x|x64|arm64)$/)) {
-		maybeAddTool('gopdlv');
+		maybeAddTool('xgodlv');
 	}
 
 	// gocode-gomod needed in go 1.11 & higher
