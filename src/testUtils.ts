@@ -89,8 +89,8 @@ export interface TestConfig {
 	 * Whether the tests are being run in a project that uses Go modules
 	 */
 	isMod?: boolean;
-	//goxls: Whether this is _test.gop
-	isGop?: boolean;
+	//xgols: Whether this is a XGo test file
+	isXGo?: boolean;
 	/**
 	 * Whether code coverage should be generated and applied.
 	 */
@@ -281,8 +281,8 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 	if (testconfig.outputChannel) {
 		outputChannel = testconfig.outputChannel;
 	}
-	// goxls: lookup gop or go
-	const goRuntimePath = getBinPath(testconfig.isGop ? 'gop' : 'go');
+	// xgols: lookup xgo or go
+	const goRuntimePath = getBinPath(testconfig.isXGo ? 'xgo' : 'go');
 	if (!goRuntimePath) {
 		vscode.window.showErrorMessage(
 			`Failed to run "go test" as the "go" binary cannot be found in either GOROOT(${getCurrentGoRoot()}) or PATH(${getEnvPath()})`
@@ -346,19 +346,19 @@ export async function goTest(testconfig: TestConfig): Promise<boolean> {
 				}
 			});
 			const modPath =
-				testconfig.isMod && testconfig.isGop
+				testconfig.isMod && testconfig.isXGo
 					? (await getModFolderPath(vscode.Uri.file(testconfig.dir), true)) || testconfig.dir
 					: testconfig.dir;
 			// go test emits build errors on stderr, which contain paths relative to the cwd
 			errBuf.onLine((line) => {
 				outputChannel.appendLine(
-					expandFilePathInErrorOutput(line, testconfig.dir, !!testconfig.isGop, modPath)
+					expandFilePathInErrorOutput(line, testconfig.dir, !!testconfig.isXGo, modPath)
 				);
 			});
 			errBuf.onDone((last) => {
 				last &&
 					outputChannel.appendLine(
-						expandFilePathInErrorOutput(last, testconfig.dir, !!testconfig.isGop, modPath)
+						expandFilePathInErrorOutput(last, testconfig.dir, !!testconfig.isXGo, modPath)
 					);
 			});
 

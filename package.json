@@ -25,10 +25,10 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/goplus/vscode-gop"
+    "url": "https://github.com/goplus/vscode-xgo"
   },
   "bugs": {
-    "url": "https://github.com/goplus/vscode-gop/issues"
+    "url": "https://github.com/goplus/vscode-xgo/issues"
   },
   "keywords": [
     "multi-root ready",
@@ -98,15 +98,21 @@
     "onLanguage:go",
     "onLanguage:gop",
     "workspaceContains:*.go",
+    "workspaceContains:*.xgo",
+    "workspaceContains:*.gox",
+    "workspaceContains:*.spx",
+    "workspaceContains:*.yap",
+    "workspaceContains:*.gsh",
     "workspaceContains:*/*.go",
     "workspaceContains:*/*/*.go",
-    "workspaceContains:**/*.gop",
+    "workspaceContains:**/*.xgo",
+    "workspaceContains:**/*.gox",
     "workspaceContains:**/*.spx",
+    "workspaceContains:**/*.yap",
     "workspaceContains:**/*.rdx",
     "workspaceContains:**/*.gmx",
-    "workspaceContains:**/*.gox",
     "workspaceContains:**/*.gsh",
-    "workspaceContains:**/*.yap",
+    "workspaceContains:**/*.gop",
     "onDebugInitialConfigurations",
     "onDebugResolve:go",
     "onDebugResolve:gop",
@@ -142,13 +148,14 @@
       {
         "id": "gop",
         "extensions": [
-          ".gop",
+          ".xgo",
+          ".gox",
           ".spx",
+          ".yap",
+          ".gsh",
           ".rdx",
           ".gmx",
-          ".gox",
-          ".gsh",
-          ".yap"
+          ".gop"
         ],
         "aliases": [
           "Goplus"
@@ -173,10 +180,11 @@
       {
         "id": "gop.mod",
         "filenames": [
+          "gox.mod",
           "gop.mod"
         ],
         "aliases": [
-          "Go+ Module File"
+          "XGo Module File"
         ],
         "configuration": "./languages/go.mod.language-configuration.json"
       },

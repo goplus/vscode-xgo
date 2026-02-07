@@ -1,4 +1,4 @@
-module github.com/goplus/vscode-gop
+module github.com/goplus/vscode-xgo
 
 go 1.16
 

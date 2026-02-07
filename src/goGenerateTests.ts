@@ -32,8 +32,8 @@ function checkActiveEditor(): vscode.TextEditor | undefined {
 		vscode.window.showInformationMessage('Cannot generate unit tests. No editor selected.');
 		return;
 	}
-	if (!editor.document.fileName.endsWith('.go') && !editor.document.fileName.endsWith('.gop')) {
-		vscode.window.showInformationMessage('Cannot generate unit tests. File in the editor is not a Go or Go+ file.');
+	if (!editor.document.fileName.endsWith('.go') && editor.document.languageId !== 'gop') {
+		vscode.window.showInformationMessage('Cannot generate unit tests. File in the editor is not a Go or XGo file.');
 		return;
 	}
 	if (editor.document.isDirty) {
@@ -53,42 +53,22 @@ export const toggleTestFile: CommandFactory = () => () => {
 		return;
 	}
 	const currentFilePath = editor.document.fileName;
-	if (!currentFilePath.endsWith('.go') && !currentFilePath.endsWith('.gop')) {
-		vscode.window.showInformationMessage('Cannot toggle test file. File in the editor is not a Go or Go+ file.');
+	if (!currentFilePath.endsWith('.go') && editor.document.languageId !== 'gop') {
+		vscode.window.showInformationMessage('Cannot toggle test file. File in the editor is not a Go or XGo file.');
 		return;
 	}
 	let targetFilePath = '';
-	if (currentFilePath.endsWith('.go') || currentFilePath.endsWith('.gop')) {
-		if (currentFilePath.endsWith('_test.go') || currentFilePath.endsWith('_test.gop')) {
-			//xx_test.go => xx.go
-			//xx_test.go => xx.gop
+	if (currentFilePath.endsWith('.go')) {
+		if (currentFilePath.endsWith('_test.go')) {
 			targetFilePath = currentFilePath.substr(0, currentFilePath.lastIndexOf('_test.go')) + '.go';
-			if (!fs.existsSync(targetFilePath)) {
-				targetFilePath = currentFilePath.substr(0, currentFilePath.lastIndexOf('_test.go')) + '.gop';
-			}
 		} else {
-			//xx.go => xx_test.go
-			//xx.go => xx_test.gop
 			targetFilePath = currentFilePath.substr(0, currentFilePath.lastIndexOf('.go')) + '_test.go';
-			if (!fs.existsSync(targetFilePath)) {
-				targetFilePath = currentFilePath.substr(0, currentFilePath.lastIndexOf('.go')) + '_test.gop';
-			}
 		}
-	} else {
-		if (currentFilePath.endsWith('_test.gop')) {
-			//xx_test.gop => xx.go
-			//xx_test.gop => xx.gop
-			targetFilePath = currentFilePath.substr(0, currentFilePath.lastIndexOf('_test.gop')) + '.go';
-			if (!fs.existsSync(targetFilePath)) {
-				targetFilePath = currentFilePath.substr(0, currentFilePath.lastIndexOf('_test.gop')) + '.gop';
-			}
+	} else if (currentFilePath.endsWith('.xgo')) {
+		if (currentFilePath.endsWith('_test.xgo')) {
+			targetFilePath = currentFilePath.substr(0, currentFilePath.lastIndexOf('_test.xgo')) + '.xgo';
 		} else {
-			//xx.gop => xx_test.go
-			//xx.gop => xx_test.gop
-			targetFilePath = currentFilePath.substr(0, currentFilePath.lastIndexOf('.gop')) + '_test.go';
-			if (!fs.existsSync(targetFilePath)) {
-				targetFilePath = currentFilePath.substr(0, currentFilePath.lastIndexOf('.gop')) + '.gop';
-			}
+			targetFilePath = currentFilePath.substr(0, currentFilePath.lastIndexOf('.xgo')) + '_test.xgo';
 		}
 	}
 
@@ -128,7 +108,7 @@ export const generateTestCurrentFile: CommandFactory = (ctx, goCtx) => () => {
 		goCtx,
 		{
 			dir: editor.document.uri.fsPath,
-			isTestFile: editor.document.fileName.endsWith('_test.go') || editor.document.fileName.endsWith('_test.gop')
+			isTestFile: editor.document.fileName.endsWith('_test.go') || editor.document.fileName.endsWith('_test.xgo') || editor.document.fileName.endsWith('test.gox') || editor.document.fileName.endsWith('_test.gop')
 		},
 		getGoConfig(editor.document.uri)
 	);

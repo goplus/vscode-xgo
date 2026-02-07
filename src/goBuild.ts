@@ -106,7 +106,7 @@ export async function goBuild(
 
 	const buildEnv = toolExecutionEnvironment();
 	const tmpPath = getTempFilePath('go-code-check');
-	const isTestFile = fileUri && (fileUri.fsPath.endsWith('_test.go') || fileUri.fsPath.endsWith('_test.gop'));
+	const isTestFile = fileUri && (fileUri.fsPath.endsWith('_test.go') || fileUri.fsPath.endsWith('_test.xgo') || fileUri.fsPath.endsWith('test.gox') || fileUri.fsPath.endsWith('_test.gop'));
 	const buildFlags: string[] = isTestFile
 		? getTestFlags(goConfig)
 		: Array.isArray(goConfig['buildFlags'])

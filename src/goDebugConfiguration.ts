@@ -200,7 +200,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			} else if (debugConfiguration['port']) {
 				this.showWarning(
 					'ignorePortUsedInDlvDapWarning',
-					"`port` with 'dlv-dap' debugAdapter connects to [an external `dlv dap` server](https://github.com/goplus/vscode-gop/blob/goplus/docs/debugging.md#running-debugee-externally) to launch a program or attach to a process. Remove 'host' and 'port' from your launch.json if you have not launched a 'dlv dap' server."
+					"`port` with 'dlv-dap' debugAdapter connects to [an external `dlv dap` server](https://github.com/goplus/vscode-xgo/blob/xgo/docs/debugging.md#running-debugee-externally) to launch a program or attach to a process. Remove 'host' and 'port' from your launch.json if you have not launched a 'dlv dap' server."
 				);
 			}
 		}
@@ -333,12 +333,12 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				filename = program;
 			}
 			debugConfiguration['mode'] =
-				filename?.endsWith('_test.go') || filename?.endsWith('_test.gop') ? 'test' : 'debug';
+				filename?.endsWith('_test.go') || filename?.endsWith('_test.xgo') || filename?.endsWith('test.gox') || filename?.endsWith('_test.gop') ? 'test' : 'debug';
 		}
 
 		if (
 			debugConfiguration['mode'] === 'test' &&
-			(debugConfiguration['program'].endsWith('_test.go') || debugConfiguration['program'].endsWith('_test.gop'))
+			(debugConfiguration['program'].endsWith('_test.go') || debugConfiguration['program'].endsWith('_test.xgo') || debugConfiguration['program'].endsWith('_test.gop'))
 		) {
 			// Running a test file in file mode does not make sense, so change the program
 			// to the directory.
@@ -544,7 +544,7 @@ export function parseDebugProgramArgSync(
 			return { program, dirname: program, programIsDirectory: true };
 		}
 		const ext = path.extname(program);
-		if (ext === '.go' || ext === '.gop') {
+		if (ext === '.go' || ext === '.xgo' || ext === '.gox' || ext === '.spx' || ext === '.yap' || ext === '.gop') {
 			// TODO(hyangah): .s?
 			return { program, dirname: path.dirname(program), programIsDirectory: false };
 		}

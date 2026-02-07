@@ -305,7 +305,7 @@ export function expandFilePathInErrorOutput(output: string, cwd: string, isGop: 
 						outputDir = modPath;
 					}
 					absoluteFilePath = path.join(outputDir, file);
-				} else if (['.gop', '.gox'].includes(fileExt)) absoluteFilePath = path.join(modPath, file);
+				} else if (['.xgo', '.gox', '.spx', '.yap', '.gsh', '.gop'].includes(fileExt)) absoluteFilePath = path.join(modPath, file);
 			}
 			lines[i] = lines[i].replace(file, absoluteFilePath);
 		}

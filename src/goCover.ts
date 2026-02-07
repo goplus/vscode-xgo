@@ -266,9 +266,9 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir?: st
 				// There is no perfect way to guess whether the line/col in coverage profile
 				// is bogus. At least, we know that 0 or negative values are not true line/col.
 
-				// goxls: shadow main startcol = 0
+				// xgols: shadow main startcol = 0
 				let col = parseInt(parse[3], 10);
-				if (col < 1 && !(filename.endsWith('.go') || filename.endsWith('.gop'))) {
+				if (col < 1 && !(filename.endsWith('.go') || filename.endsWith('.xgo') || filename.endsWith('.gop'))) {
 					col = 1;
 				}
 				const startLine = parseInt(parse[2], 10);
@@ -383,6 +383,8 @@ export function applyCodeCoverage(editor: vscode.TextEditor | undefined) {
 		!editor ||
 		(editor.document.languageId !== 'go' && editor.document.languageId !== 'gop') ||
 		editor.document.fileName.endsWith('_test.go') ||
+		editor.document.fileName.endsWith('_test.xgo') ||
+		editor.document.fileName.endsWith('test.gox') ||
 		editor.document.fileName.endsWith('_test.gop')
 	) {
 		return;

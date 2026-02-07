@@ -347,7 +347,7 @@ export async function getGoVersion(goBinPath?: string): Promise<GoVersion> {
 		error(`cached Go version (${JSON.stringify(cachedGoVersion)}) is invalid, recomputing`);
 	}
 	const docUri = vscode.window.activeTextEditor?.document.uri;
-	const cond = docUri && (docUri.fsPath.endsWith('.go') || docUri.fsPath.endsWith('.gop'));
+	const cond = docUri && (docUri.fsPath.endsWith('.go') || docUri.fsPath.endsWith('.xgo') || docUri.fsPath.endsWith('.gox') || docUri.fsPath.endsWith('.gop'));
 	const cwd = getWorkspaceFolderPath(cond ? docUri : undefined);
 
 	let goVersion: GoVersion | undefined;
@@ -510,8 +510,8 @@ export function substituteEnv(input: string): string {
 	});
 }
 
-export function getCurrentGopRoot(workspaceUri?: vscode.Uri): string {
-	const buf = cp.execSync('gop env GOPROOT');
+export function getCurrentXGoRoot(workspaceUri?: vscode.Uri): string {
+	const buf = cp.execSync('xgo env XGOROOT');
 	return buf.toString();
 }
 

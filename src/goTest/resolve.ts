@@ -116,7 +116,7 @@ export class GoTestResolver {
 		// The user expanded a module or package - find all files
 		if (kind === 'module' || kind === 'package') {
 			for (const [file, type] of await this.workspace.fs.readDirectory(item.uri)) {
-				if (type !== FileType.File || !(file.endsWith('_test.go') || file.endsWith('_test.gop'))) {
+				if (type !== FileType.File || !(file.endsWith('_test.go') || file.endsWith('_test.xgo') || file.endsWith('test.gox') || file.endsWith('_test.gop'))) {
 					continue;
 				}
 
@@ -510,7 +510,7 @@ async function walkWorkspaces(fs: FileSystem, uri: Uri): Promise<Map<string, boo
 			return WalkStop.Current;
 		}
 
-		if (file.endsWith('.go') || file.endsWith('.gop')) {
+		if (file.endsWith('.go') || file.endsWith('.xgo') || file.endsWith('.gox') || file.endsWith('.gop')) {
 			found.set(dir.toString(), false);
 		}
 	});
@@ -521,7 +521,7 @@ async function walkWorkspaces(fs: FileSystem, uri: Uri): Promise<Map<string, boo
 // test file.
 async function walkPackages(fs: FileSystem, uri: Uri, cb: (uri: Uri) => Promise<unknown>) {
 	await walk(fs, uri, async (dir, file) => {
-		if (file.endsWith('_test.go') || file.endsWith('_test.gop')) {
+		if (file.endsWith('_test.go') || file.endsWith('_test.xgo') || file.endsWith('test.gox') || file.endsWith('_test.gop')) {
 			await cb(dir);
 			return WalkStop.Files;
 		}

@@ -314,7 +314,7 @@ export class GoTestExplorer {
 
 	// Handle opened documents, document changes, and file creation.
 	private async documentUpdate(doc: TextDocument, ranges?: Range[]) {
-		if (!doc.uri.path.endsWith('_test.go') && !doc.uri.path.endsWith('_test.gop')) {
+		if (!doc.uri.path.endsWith('_test.go') && !doc.uri.path.endsWith('_test.xgo') && !doc.uri.path.endsWith('test.gox') && !doc.uri.path.endsWith('_test.gop')) {
 			return;
 		}
 

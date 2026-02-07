@@ -50,8 +50,9 @@ async function _testAtCursor(
 	}
 	if (
 		!editor.document.fileName.endsWith('_test.go') &&
-		!editor.document.fileName.endsWith('_test.gop') &&
-		!editor.document.fileName.endsWith('test.gox')
+		!editor.document.fileName.endsWith('_test.xgo') &&
+		!editor.document.fileName.endsWith('test.gox') &&
+		!editor.document.fileName.endsWith('_test.gop')
 	) {
 		throw new NotFoundError('No tests found. Current file is not a test file.');
 	}
@@ -215,7 +216,7 @@ async function runTestAtCursor(
 		testConfigFns.push(...findAllTestSuiteRuns(editor.document, testFunctions).map((t) => t.name));
 	}
 	const isMod = await isModSupported(editor.document.uri);
-	const isGop = editor.document.fileName.endsWith('.gop') || editor.document.fileName.endsWith('.gox'); // goxls: isGop
+	const isXGo = editor.document.languageId === 'gop'; // xgols: isXGo
 	const testConfig: TestConfig = {
 		goConfig,
 		dir: path.dirname(editor.document.fileName),
@@ -223,7 +224,7 @@ async function runTestAtCursor(
 		functions: testConfigFns,
 		isBenchmark: cmd === 'benchmark',
 		isMod,
-		isGop,
+		isXGo: isXGo,
 		applyCodeCoverage: goConfig.get<boolean>('coverOnSingleTest')
 	};
 	// Remember this config as the last executed test.
@@ -318,14 +319,14 @@ export function testCurrentPackage(isBenchmark: boolean): CommandFactory {
 		}
 
 		const isMod = await isModSupported(editor.document.uri);
-		const isGop = editor.document.fileName.endsWith('.gop'); // goxls: isGop
+		const isXGo = editor.document.languageId === 'gop'; // xgols: isXGo
 		const testConfig: TestConfig = {
 			goConfig,
 			dir: path.dirname(editor.document.fileName),
 			flags: getTestFlags(goConfig, args),
 			isBenchmark,
 			isMod,
-			isGop,
+			isXGo: isXGo,
 			applyCodeCoverage: goConfig.get<boolean>('coverOnTestPackage')
 		};
 		// Remember this config as the last executed test.
@@ -386,8 +387,9 @@ export function testCurrentFile(isBenchmark: boolean, getConfig = getGoConfig): 
 		}
 		if (
 			!editor.document.fileName.endsWith('_test.go') &&
-			!editor.document.fileName.endsWith('_test.gop') &&
-			!editor.document.fileName.endsWith('test.gox')
+			!editor.document.fileName.endsWith('_test.xgo') &&
+			!editor.document.fileName.endsWith('test.gox') &&
+			!editor.document.fileName.endsWith('_test.gop')
 		) {
 			vscode.window.showInformationMessage('No tests found. Current file is not a test file.');
 			return false;
@@ -395,7 +397,7 @@ export function testCurrentFile(isBenchmark: boolean, getConfig = getGoConfig): 
 
 		const getFunctions = isBenchmark ? getBenchmarkFunctions : getTestFunctions;
 		const isMod = await isModSupported(editor.document.uri);
-		const isGop = editor.document.fileName.endsWith('.gop'); // goxls: isGop
+		const isXGo = editor.document.languageId === 'gop'; // xgols: isXGo
 
 		return editor.document
 			.save()
@@ -408,7 +410,7 @@ export function testCurrentFile(isBenchmark: boolean, getConfig = getGoConfig): 
 						functions: testFunctions?.map((sym) => sym.name),
 						isBenchmark,
 						isMod,
-						isGop,
+						isXGo: isXGo,
 						applyCodeCoverage: goConfig.get<boolean>('coverOnSingleTestFile')
 					};
 					// Remember this config as the last executed test.
