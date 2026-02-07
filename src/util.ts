@@ -82,10 +82,10 @@ export const goBuiltinTypes: Set<string> = new Set<string>([
 	'uintptr'
 ]);
 
-const xgoExts = new Set(['.go', '.xgo', '.gox', '.spx', '.yap', '.gsh', '.rdx', '.gmx', '.gop']);
+export const xgoExts = new Set(['.go', '.xgo', '.gox', '.spx', '.yap', '.gsh', '.rdx', '.gmx', '.gop']);
 
 export function isXGoFile(file: string): boolean {
-    return xgoExts.has(path.extname(file));
+	return xgoExts.has(path.extname(file));
 }
 
 export function isXGoTestFile(file: string): boolean {
@@ -171,8 +171,8 @@ let toolsGopath: string;
 export function getCheckForToolsUpdatesConfig(gocfg: vscode.WorkspaceConfiguration) {
 	// useGoProxyToCheckForToolUpdates deprecation
 	// TODO: Step 1. mark as deprecated in Dec 2020 release, and update dev containers.
-	//       Step 2. prompt users to switch config. Jan 2020
-	//       Step 3. delete useGoProxyToCheckForToolUpdates support. Feb 2020
+	//	   Step 2. prompt users to switch config. Jan 2020
+	//	   Step 3. delete useGoProxyToCheckForToolUpdates support. Feb 2020
 	const legacyCfg = gocfg.get('useGoProxyToCheckForToolUpdates');
 	if (legacyCfg === false) {
 		const cfg = gocfg.inspect('toolsManagement.checkForUpdates');
@@ -232,11 +232,11 @@ export function parseFilePrelude(text: string): Prelude {
 }
 
 // Takes a Go function signature like:
-//     (foo, bar string, baz number) (string, string)
+//	 (foo, bar string, baz number) (string, string)
 // and returns an array of parameter strings:
-//     ["foo", "bar string", "baz string"]
+//	 ["foo", "bar string", "baz string"]
 // Takes care of balancing parens so to not get confused by signatures like:
-//     (pattern string, handler func(ResponseWriter, *Request)) {
+//	 (pattern string, handler func(ResponseWriter, *Request)) {
 export function getParametersAndReturnType(signature: string): { params: string[]; returnType: string } {
 	const params: string[] = [];
 	let parenCount = 0;
@@ -1108,7 +1108,7 @@ export function runGodoc(
 				}
 
 				for (let i = 1; i <= lastLine; i++) {
-					if (godocLines[i].startsWith('    ')) {
+					if (godocLines[i].startsWith('	')) {
 						doc += godocLines[i].substring(4) + '\n';
 					} else if (!godocLines[i].trim()) {
 						doc += '\n';

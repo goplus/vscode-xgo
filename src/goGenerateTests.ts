@@ -108,7 +108,7 @@ export const generateTestCurrentFile: CommandFactory = (ctx, goCtx) => () => {
 		goCtx,
 		{
 			dir: editor.document.uri.fsPath,
-			isTestFile: editor.document.fileName.endsWith('_test.go') || editor.document.fileName.endsWith('_test.xgo') || editor.document.fileName.endsWith('test.gox') || editor.document.fileName.endsWith('_test.gop')
+			isTestFile: isXGoTestFile(editor.document.fileName)
 		},
 		getGoConfig(editor.document.uri)
 	);

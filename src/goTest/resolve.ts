@@ -116,7 +116,7 @@ export class GoTestResolver {
 		// The user expanded a module or package - find all files
 		if (kind === 'module' || kind === 'package') {
 			for (const [file, type] of await this.workspace.fs.readDirectory(item.uri)) {
-				if (type !== FileType.File || !(file.endsWith('_test.go') || file.endsWith('_test.xgo') || file.endsWith('test.gox') || file.endsWith('_test.gop'))) {
+				if (type !== FileType.File || !isXGoTestFile(file)) {
 					continue;
 				}
 

@@ -23,6 +23,7 @@ import {
 	goTest,
 	TestConfig
 } from './testUtils';
+import { isXGoTestFile } from './util';
 
 // lastTestConfig holds a reference to the last executed TestConfig which allows
 // the last test to be easily re-executed.
@@ -48,12 +49,7 @@ async function _testAtCursor(
 	if (!editor) {
 		throw new NotFoundError('No editor is active.');
 	}
-	if (
-		!editor.document.fileName.endsWith('_test.go') &&
-		!editor.document.fileName.endsWith('_test.xgo') &&
-		!editor.document.fileName.endsWith('test.gox') &&
-		!editor.document.fileName.endsWith('_test.gop')
-	) {
+	if (!isXGoTestFile(editor.document.fileName)) {
 		throw new NotFoundError('No tests found. Current file is not a test file.');
 	}
 
@@ -91,7 +87,7 @@ async function _subTestAtCursor(
 		vscode.window.showInformationMessage('No editor is active.');
 		return;
 	}
-	if (!editor.document.fileName.endsWith('_test.go') && !editor.document.fileName.endsWith('_test.gop')) {
+	if (!isXGoTestFile(editor.document.fileName)) {
 		vscode.window.showInformationMessage('No tests found. Current file is not a test file.');
 		return;
 	}
@@ -385,12 +381,7 @@ export function testCurrentFile(isBenchmark: boolean, getConfig = getGoConfig): 
 			vscode.window.showInformationMessage('No editor is active.');
 			return false;
 		}
-		if (
-			!editor.document.fileName.endsWith('_test.go') &&
-			!editor.document.fileName.endsWith('_test.xgo') &&
-			!editor.document.fileName.endsWith('test.gox') &&
-			!editor.document.fileName.endsWith('_test.gop')
-		) {
+		if (!isXGoTestFile(editor.document.fileName)) {
 			vscode.window.showInformationMessage('No tests found. Current file is not a test file.');
 			return false;
 		}
