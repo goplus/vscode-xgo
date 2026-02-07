@@ -16,7 +16,7 @@ import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool } from './goInstallTools';
 import { GoDocumentSymbolProvider } from './goDocumentSymbols';
 import { outputChannel } from './goStatus';
-import { getBinPath, resolvePath } from './util';
+import { getBinPath, isXGoTestFile, resolvePath } from './util';
 import { CommandFactory } from './commands';
 import { GoExtensionContext } from './context';
 import fs = require('fs');
@@ -91,7 +91,7 @@ export const generateTestCurrentPackage: CommandFactory = (ctx, goCtx) => () => 
 		goCtx,
 		{
 			dir: path.dirname(editor.document.uri.fsPath),
-			isTestFile: editor.document.fileName.endsWith('_test.go') || editor.document.fileName.endsWith('_test.gop')
+			isTestFile: isXGoTestFile(editor.document.fileName)
 		},
 		getGoConfig(editor.document.uri)
 	);

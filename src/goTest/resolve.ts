@@ -20,7 +20,7 @@ import path = require('path');
 import vscode = require('vscode');
 import { outputChannel } from '../goStatus';
 import { getModFolderPath } from '../goModules';
-import { getCurrentGoPath } from '../util';
+import { getCurrentGoPath, isXGoTestFile } from '../util';
 import { getGoConfig } from '../config';
 import { dispose, disposeIfEmpty, FileSystem, GoTest, GoTestKind, findModuleName, isInTest, Workspace } from './utils';
 import { walk, WalkStop } from './walk';
@@ -521,7 +521,7 @@ async function walkWorkspaces(fs: FileSystem, uri: Uri): Promise<Map<string, boo
 // test file.
 async function walkPackages(fs: FileSystem, uri: Uri, cb: (uri: Uri) => Promise<unknown>) {
 	await walk(fs, uri, async (dir, file) => {
-		if (file.endsWith('_test.go') || file.endsWith('_test.xgo') || file.endsWith('test.gox') || file.endsWith('_test.gop')) {
+		if (isXGoTestFile(file)) {
 			await cb(dir);
 			return WalkStop.Files;
 		}

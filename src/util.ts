@@ -82,6 +82,16 @@ export const goBuiltinTypes: Set<string> = new Set<string>([
 	'uintptr'
 ]);
 
+const xgoExts = new Set(['.go', '.xgo', '.gox', '.spx', '.yap', '.gsh', '.rdx', '.gmx', '.gop']);
+
+export function isXGoFile(file: string): boolean {
+    return xgoExts.has(path.extname(file));
+}
+
+export function isXGoTestFile(file: string): boolean {
+	return file.endsWith('_test.go') || file.endsWith('_test.xgo') || file.endsWith('test.gox') || file.endsWith('_test.gop');
+}
+
 export class GoVersion {
 	public sv?: semver.SemVer;
 	// Go version tags are not following the strict semver format
@@ -347,7 +357,7 @@ export async function getGoVersion(goBinPath?: string): Promise<GoVersion> {
 		error(`cached Go version (${JSON.stringify(cachedGoVersion)}) is invalid, recomputing`);
 	}
 	const docUri = vscode.window.activeTextEditor?.document.uri;
-	const cond = docUri && (docUri.fsPath.endsWith('.go') || docUri.fsPath.endsWith('.xgo') || docUri.fsPath.endsWith('.gox') || docUri.fsPath.endsWith('.gop'));
+	const cond = docUri && isXGoFile(docUri.fsPath);
 	const cwd = getWorkspaceFolderPath(cond ? docUri : undefined);
 
 	let goVersion: GoVersion | undefined;

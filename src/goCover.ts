@@ -17,6 +17,7 @@ import { isModSupported } from './goModules';
 import { getImportPathToFolder } from './goPackages';
 import { getTestFlags, goTest, showTestOutput, TestConfig } from './testUtils';
 import { fixDriveCasingInWindows } from './utils/pathUtils';
+import { isXGoFile } from './util';
 
 let gutterSvgs: { [key: string]: string };
 
@@ -268,7 +269,7 @@ export function applyCodeCoverageToAllEditors(coverProfilePath: string, dir?: st
 
 				// xgols: shadow main startcol = 0
 				let col = parseInt(parse[3], 10);
-				if (col < 1 && !(filename.endsWith('.go') || filename.endsWith('.xgo') || filename.endsWith('.gop'))) {
+				if (col < 1 && !isXGoFile(filename)) {
 					col = 1;
 				}
 				const startLine = parseInt(parse[2], 10);
