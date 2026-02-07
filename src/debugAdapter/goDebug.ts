@@ -608,12 +608,12 @@ export class Delve {
 
 				if (!existsSync(launchArgs.dlvToolPath)) {
 					log(
-						`Couldn't find gopdlv at the Go tools path, ${process.env['GOPATH']}${
+						`Couldn't find xgodlv at the Go tools path, ${process.env['GOPATH']}${
 							env['GOPATH'] ? ', ' + env['GOPATH'] : ''
 						} or ${getEnvPath()}`
 					);
 					return reject(
-						'Cannot find Go/Go+ debugger. Install from https://github.com/goplus/gopdlv & ensure it is in your Go tools path, "GOPATH/bin" or "PATH".'
+						'Cannot find Go/XGo debugger. Install from https://github.com/goplus/xgodlv & ensure it is in your Go tools path, "GOPATH/bin" or "PATH".'
 					);
 				}
 
@@ -668,7 +668,7 @@ export class Delve {
 
 				if (!existsSync(launchArgs.dlvToolPath)) {
 					return reject(
-						'Cannot find Go/Go+ debugger. Install from https://github.com/goplus/gopdlv & ensure it is in your Go tools path, "GOPATH/bin" or "PATH".'
+						'Cannot find Go/XGo debugger. Install from https://github.com/goplus/xgodlv & ensure it is in your Go tools path, "GOPATH/bin" or "PATH".'
 					);
 				}
 

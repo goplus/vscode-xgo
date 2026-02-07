@@ -1,4 +1,4 @@
-/* goxls: disable tests
+/* xgols: disable tests
 import assert = require('assert');
 import path = require('path');
 import sinon = require('sinon');

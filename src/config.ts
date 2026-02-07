@@ -9,7 +9,7 @@ import { extensionId } from './const';
 
 /** getGoConfig is declared as an exported const rather than a function, so it can be stubbbed in testing. */
 export const getGoConfig = (uri?: vscode.Uri) => {
-	// goxls: conflicts fix (getConfig)
+	// xgols: conflicts fix (getConfig)
 	return getConfig('gop', uri);
 };
 

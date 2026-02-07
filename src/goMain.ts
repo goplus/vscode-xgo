@@ -102,7 +102,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	offerToInstallTools();
 
 	const registerCommand = commands.createRegisterCommand(ctx, goCtx);
-	// goxls: conflicts fix
+	// xgols: conflicts fix
 	registerCommand('gop.languageserver.restart', commands.startLanguageServer);
 	registerCommand('gop.languageserver.maintain', commands.startGoplsMaintainerInterface);
 
@@ -110,7 +110,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 
 	initCoverageDecorators(ctx);
 
-	// goxls: conflicts fix
+	// xgols: conflicts fix
 	registerCommand('gop.builds.run', commands.runBuilds);
 
 	const activeDoc = vscode.window.activeTextEditor?.document;
@@ -122,7 +122,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 		});
 	}
 
-	// goxls: conflicts fix
+	// xgols: conflicts fix
 	registerCommand('gop.environment.status', expandGoStatusBar);
 
 	GoRunTestCodeLensProvider.activate(ctx, goCtx);
@@ -138,7 +138,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	goCtx.vetDiagnosticCollection = vscode.languages.createDiagnosticCollection('go-vet');
 	ctx.subscriptions.push(goCtx.vetDiagnosticCollection);
 
-	// goxls: conflicts fix
+	// xgols: conflicts fix
 	registerCommand('gop.gopath', commands.getCurrentGoPath);
 	registerCommand('gop.goroot', commands.getCurrentGoRoot);
 	registerCommand('gop.goproot', commands.getCurrentGopRoot);
@@ -163,7 +163,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	registerCommand('gop.test.previous', commands.testPrevious);
 	registerCommand('gop.debug.previous', commands.debugPrevious);
 
-	// goxls: conflicts fix
+	// xgols: conflicts fix
 	registerCommand('gop.test.coverage', toggleCoverageCurrentPackage);
 	registerCommand('gop.test.showOutput', () => showTestOutput);
 	registerCommand('gop.test.cancel', () => cancelRunningTests);
@@ -178,7 +178,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 
 	GoExplorerProvider.setup(ctx);
 
-	// goxls: conflicts fix
+	// xgols: conflicts fix
 	registerCommand('gop.test.generate.package', goGenerateTests.generateTestCurrentPackage);
 	registerCommand('gop.test.generate.file', goGenerateTests.generateTestCurrentFile);
 	registerCommand('gop.test.generate.function', goGenerateTests.generateTestCurrentFunction);
@@ -203,11 +203,11 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 	registerCommand('gop.apply.coverprofile', commands.applyCoverprofile);
 
 	// Go+ Environment switching commands
-	// goxls: conflicts fix
+	// xgols: conflicts fix
 	registerCommand('gop.environment.choose', chooseGoEnvironment);
 
 	// Survey related commands
-	// goxls: conflicts fix
+	// xgols: conflicts fix
 	registerCommand('gop.survey.showConfig', showSurveyConfig);
 	registerCommand('gop.survey.resetConfig', resetSurveyConfigs);
 
@@ -224,7 +224,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<ExtensionA
 
 	// Vulncheck output link provider.
 	VulncheckOutputLinkProvider.activate(ctx);
-	// goxls: conflicts fix
+	// xgols: conflicts fix
 	registerCommand('gop.vulncheck.toggle', toggleVulncheckCommandFactory);
 
 	return extensionAPI;

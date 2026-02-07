@@ -197,7 +197,7 @@ export async function installTools(
 			tool,
 			goForInstall,
 			envForTools,
-			tool.name === 'xgols' || tool.name === 'gopdlv'
+			tool.name === 'xgols' || tool.name === 'xgodlv'
 		);
 		if (failed) {
 			failures.push({ tool, reason: failed });
@@ -439,7 +439,7 @@ export async function promptForMissingTool(toolName: string) {
 		installOptions.push('Install All');
 	}
 	let goCmd = 'go';
-	if (tool.name == 'xgols' || tool.name == 'gopdlv') {
+	if (tool.name == 'xgols' || tool.name == 'xgodlv') {
 		// Prefer xgo over gop
 		const xgoPath = getBinPath('xgo');
 		if (xgoPath !== 'xgo') {
@@ -501,7 +501,7 @@ export async function promptForUpdatingTool(
 	if (toolName === 'xgols') {
 		choices = ['Always Update', 'Update Once', 'Release Notes'];
 	}
-	if (toolName === 'gopdlv') {
+	if (toolName === 'xgodlv') {
 		choices = ['Always Update', 'Update Once'];
 	}
 
@@ -628,7 +628,7 @@ export async function offerToInstallTools() {
 			'gop.promptforinstall',
 			'Not all Go tools are available on the GOPATH'
 		);
-		// goxls: conflicts fix
+		// xgols: conflicts fix
 		vscode.commands.registerCommand('gop.promptforinstall', () => {
 			const installItem = {
 				title: 'Install',

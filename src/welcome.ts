@@ -19,7 +19,7 @@ import { createRegisterCommand } from './commands';
 export class WelcomePanel {
 	public static activate(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
 		const registerCommand = createRegisterCommand(ctx, goCtx);
-		// goxls: conflicts fix
+		// xgols: conflicts fix
 		registerCommand('gop.welcome', WelcomePanel.createOrShow);
 
 		if (vscode.window.registerWebviewPanelSerializer) {

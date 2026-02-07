@@ -240,10 +240,10 @@ export const allToolsInformation: { [key: string]: Tool } = {
 		latestVersionTimestamp: moment('2021-05-19', 'YYYY-MM-DD'),
 		minimumGoVersion: semver.coerce('1.12') // dlv requires 1.12+ for build
 	},
-	'gopdlv': {
-		name: 'gopdlv',
-		importPath: 'github.com/goplus/gopdlv',
-		modulePath: 'github.com/goplus/gopdlv',
+	'xgodlv': {
+		name: 'xgodlv',
+		importPath: 'github.com/goplus/xgodlv',
+		modulePath: 'github.com/goplus/xgodlv',
 		replacedByGopls: false,
 		isImportant: true,
 		description: 'Go/Go+ Debugger',
