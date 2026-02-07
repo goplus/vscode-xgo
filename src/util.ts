@@ -1108,7 +1108,7 @@ export function runGodoc(
 				}
 
 				for (let i = 1; i <= lastLine; i++) {
-					if (godocLines[i].startsWith('	')) {
+					if (godocLines[i].startsWith('    ')) {
 						doc += godocLines[i].substring(4) + '\n';
 					} else if (!godocLines[i].trim()) {
 						doc += '\n';
