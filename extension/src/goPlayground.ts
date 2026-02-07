@@ -12,6 +12,7 @@ import { outputChannel } from './goStatus';
 import { getBinPath } from './util';
 import vscode = require('vscode');
 import { CommandFactory } from './commands';
+import { TelemetryKey, telemetryReporter } from './goTelemetry';
 
 const TOOL_CMD_NAME = 'goplay';
 
@@ -27,26 +28,27 @@ export const playgroundCommand: CommandFactory = () => () => {
 		return promptForMissingTool(TOOL_CMD_NAME);
 	}
 
-	outputChannel.clear();
 	outputChannel.show();
-	outputChannel.appendLine('Upload to the Go Playground in progress...\n');
+	outputChannel.info('Upload to the Go Playground in progress...\n');
 
 	const selection = editor.selection;
 	const code = selection.isEmpty ? editor.document.getText() : editor.document.getText(selection);
 	const config: vscode.WorkspaceConfiguration | undefined = getGoConfig(editor.document.uri).get('playground');
 	goPlay(code, config).then(
 		(result) => {
-			outputChannel.append(result);
+			outputChannel.info(result);
 		},
 		(e: string) => {
 			if (e) {
-				outputChannel.append(e);
+				outputChannel.info(e);
 			}
 		}
 	);
 };
 
 export function goPlay(code: string, goConfig?: vscode.WorkspaceConfiguration): Thenable<string> {
+	telemetryReporter.add(TelemetryKey.TOOL_USAGE_GOPLAY, 1);
+
 	const cliArgs = goConfig ? Object.keys(goConfig).map((key) => `-${key}=${goConfig[key]}`) : [];
 	const binaryLocation = getBinPath(TOOL_CMD_NAME);
 

@@ -26,21 +26,14 @@ export function toolInstallationEnvironment(): NodeJS.Dict<string> {
 	} else {
 		toolsGopath = getCurrentGoPath();
 	}
-	if (!toolsGopath) {
-		const msg = 'Cannot install Go tools. Set either go.gopath or go.toolsGopath in settings.';
-		vscode.window.showInformationMessage(msg, 'Open User Settings', 'Open Workspace Settings').then((selected) => {
-			switch (selected) {
-				case 'Open User Settings':
-					vscode.commands.executeCommand('workbench.action.openGlobalSettings');
-					break;
-				case 'Open Workspace Settings':
-					vscode.commands.executeCommand('workbench.action.openWorkspaceSettings');
-					break;
-			}
-		});
-		return {};
-	}
 	env['GOPATH'] = toolsGopath;
+
+	// Explicitly set 'auto' so tools that require
+	// a newer toolchain can be built.
+	// We don't use unset, but unconditionally set this env var
+	// since some users may change the env var using GOENV,
+	// GOROOT/.goenv, or toolchain modification.
+	env['GOTOOLCHAIN'] = 'auto';
 
 	// Unset env vars that would affect tool build process: 'GOROOT', 'GOOS', 'GOARCH', ...
 	// Tool installation should be done for the host OS/ARCH (GOHOSTOS/GOHOSTARCH) with

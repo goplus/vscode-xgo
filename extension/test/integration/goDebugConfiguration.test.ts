@@ -23,6 +23,10 @@ suite('Debug Environment Variable Merge Test', () => {
 	const fixtureSourcePath = path.join(__dirname, '..', '..', '..', 'test', 'testdata');
 	const filePath = path.join(fixtureSourcePath, 'baseTest', 'test.go');
 
+	// updateGoVarsFromConfig mutates process.env.
+	// Stash the original value and restore it in suiteTeardown.
+	// TODO: avoid updateGoVarsFromConfig.
+	const prevEnv = Object.assign({}, process.env);
 	suiteSetup(async () => {
 		await goInstallTools.updateGoVarsFromConfig({});
 		await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
@@ -30,6 +34,7 @@ suite('Debug Environment Variable Merge Test', () => {
 
 	suiteTeardown(() => {
 		vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+		process.env = prevEnv;
 	});
 
 	let sandbox: sinon.SinonSandbox;
@@ -125,7 +130,7 @@ suite('Debug Environment Variable Merge Test', () => {
 	test('launchArgs.env overwrites launchArgs.envFile', () => {
 		const env = { SOMEVAR1: 'valueFromEnv' };
 		const envFile = path.join(tmpDir, 'env');
-		fs.writeFileSync(envFile, ['SOMEVAR1=valueFromEnvFile1', 'SOMEVAR2=valueFromEnvFile2'].join('\n'));
+		fs.writeFileSync(envFile, ['SOMEVAR1=valueFromEnvFile1', 'export SOMEVAR2=valueFromEnvFile2'].join('\n'));
 
 		runTest(
 			{ env, envFile },
@@ -712,6 +717,29 @@ suite('Debug Configuration Converts Relative Paths', () => {
 		);
 	});
 
+	test('allow package path in dlv-dap mode', () => {
+		const config = debugConfig('dlv-dap');
+		config.program = 'example.com/foo/bar';
+
+		const workspaceFolder = {
+			uri: vscode.Uri.file(workspaceDir),
+			name: 'test',
+			index: 0
+		};
+		const { program, cwd, __buildDir } = debugConfigProvider.resolveDebugConfigurationWithSubstitutedVariables(
+			workspaceFolder,
+			config
+		)!;
+		assert.deepStrictEqual(
+			{ program, cwd, __buildDir },
+			{
+				program: 'example.com/foo/bar',
+				cwd: workspaceDir,
+				__buildDir: undefined
+			}
+		);
+	});
+
 	test('program and __buildDir are updated while resolving debug configuration in dlv-dap mode', () => {
 		createDirRecursively(path.join(workspaceDir, 'foo', 'bar', 'pkg'));
 
@@ -937,6 +965,16 @@ suite('Debug Configuration Auto Mode', () => {
 
 suite('Debug Configuration Default DebugAdapter', () => {
 	const debugConfigProvider = new GoDebugConfigurationProvider();
+	let sandbox: sinon.SinonSandbox;
+
+	setup(() => {
+		sandbox = sinon.createSandbox();
+	});
+
+	teardown(() => {
+		sandbox.restore();
+	});
+
 	test("default debugAdapter should be 'dlv-dap'", async () => {
 		const config = {
 			name: 'Launch',
@@ -951,7 +989,7 @@ suite('Debug Configuration Default DebugAdapter', () => {
 		assert.strictEqual(resolvedConfig['debugAdapter'], 'dlv-dap');
 	});
 
-	test("default debugAdapter for remote mode should be 'dlv-dap'", async () => {
+	test('remote mode: sets adapter based on the extension preview status when dlv path guessing fails', async () => {
 		const config = {
 			name: 'Attach',
 			type: 'go',
@@ -961,24 +999,47 @@ suite('Debug Configuration Default DebugAdapter', () => {
 			cwd: '/path'
 		};
 
-		const want = 'dlv-dap';
+		const guessStub = sandbox.stub(debugConfigProvider, 'guessSubstitutePath').resolves(null);
+
 		await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		const resolvedConfig = config as any;
+
+		const want = extensionInfo.isPreview ? 'dlv-dap' : 'legacy';
 		assert.strictEqual(resolvedConfig['debugAdapter'], want);
+		assert.ok(guessStub.calledOnce, 'guessSubstitutePath should have been called');
 	});
 
-	test('debugAdapter=legacy is allowed with remote mode', async () => {
+	test('remote mode: sets debugAdapter to dlv-dap when dlv path guessing succeeds', async () => {
 		const config = {
 			name: 'Attach',
 			type: 'go',
 			request: 'attach',
 			mode: 'remote',
-			debugAdapter: 'legacy',
 			program: '/path/to/main_test.go',
 			cwd: '/path'
 		};
 
-		const want = 'legacy'; // If requested, legacy is preserved.
+		const guessStub = sandbox.stub(debugConfigProvider, 'guessSubstitutePath').resolves({});
+
+		await debugConfigProvider.resolveDebugConfiguration(undefined, config);
+		const resolvedConfig = config as any;
+
+		assert.strictEqual(resolvedConfig['debugAdapter'], 'dlv-dap');
+		assert.ok(guessStub.calledOnce, 'guessSubstitutePath should have been called');
+	});
+
+	test('debugAdapter=dlv-dap is allowed with remote mode', async () => {
+		const config = {
+			name: 'Attach',
+			type: 'go',
+			request: 'attach',
+			mode: 'remote',
+			debugAdapter: 'dlv-dap',
+			program: '/path/to/main_test.go',
+			cwd: '/path'
+		};
+
+		const want = 'dlv-dap'; // If requested, dlv-dap is preserved.
 		await debugConfigProvider.resolveDebugConfiguration(undefined, config);
 		const resolvedConfig = config as any;
 		assert.strictEqual(resolvedConfig['debugAdapter'], want);
@@ -1018,7 +1079,8 @@ suite('Debug Configuration Infers Default Mode Property', () => {
 			name: 'Attach',
 			type: 'go',
 			request: 'attach',
-			program: '/path/to/main.go'
+			program: '/path/to/main.go',
+			processId: 12345 // set a bogus process ID to provent process quickPick popup.
 		};
 
 		debugConfigProvider.resolveDebugConfiguration(undefined, config);

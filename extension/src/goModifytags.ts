@@ -14,12 +14,32 @@ import { getGoConfig } from './config';
 import { toolExecutionEnvironment } from './goEnv';
 import { promptForMissingTool, promptForUpdatingTool } from './goInstallTools';
 import { byteOffsetAt, getBinPath, getFileArchive } from './util';
+import { TelemetryKey, telemetryReporter } from './goTelemetry';
+import { promptForFeedback } from './goGenerateTests';
+
+export const COMMAND = 'gopls.modify_tags';
 
 // Interface for the output from gomodifytags
 interface GomodifytagsOutput {
 	start: number;
 	end: number;
 	lines: string[];
+}
+
+// Interface for the arguments passed to gopls.modify_tags command. URI and range
+// are required parameters collected by the extension based on the open editor,
+// and the rest of the args are collected by user input or user settings.
+interface GoModifyTagsArgs {
+	URI: string;
+	range: vscode.Range;
+	add?: string;
+	addOptions?: string;
+	remove?: string;
+	removeOptions?: string;
+	transform?: string;
+	valueFormat?: string;
+	clear?: boolean;
+	clearOptions?: boolean;
 }
 
 // Interface for settings configuration for adding and removing tags
@@ -31,45 +51,108 @@ interface GoTagsConfig {
 	template: string;
 }
 
-export const addTags: CommandFactory = () => (commandArgs: GoTagsConfig) => {
-	const args = getCommonArgs();
-	if (!args) {
-		return;
-	}
-
-	getTagsAndOptions(<GoTagsConfig>getGoConfig()['addTags'], commandArgs).then(
-		([tags, options, transformValue, template]) => {
-			if (!tags && !options) {
-				return;
-			}
-			if (tags) {
-				args.push('--add-tags');
-				args.push(tags);
-			}
-			if (options) {
-				args.push('--add-options');
-				args.push(options);
-			}
-			if (transformValue) {
-				args.push('--transform');
-				args.push(transformValue);
-			}
-			if (template) {
-				args.push('--template');
-				args.push(template);
-			}
-			runGomodifytags(args);
+export const addTags: CommandFactory = (_ctx, goCtx) => async (uri: vscode.Uri) => {
+	const useGoplsCommand = goCtx.serverInfo?.Commands?.includes(COMMAND);
+	if (useGoplsCommand) {
+		if (uri) {
+			telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_MODIFY_TAGS_CONTEXT_MENU, 1);
+		} else {
+			telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_MODIFY_TAGS_COMMAND_PALETTE, 1);
 		}
-	);
+
+		const args = getCommonArgs();
+		if (!args) {
+			return;
+		}
+		const [tags, options, transformValue, template] = await getTagsAndOptions(getGoConfig()?.addTags);
+		if (!tags && !options) {
+			return;
+		}
+		if (tags) {
+			args.add = tags;
+		}
+		if (options) {
+			args.addOptions = options;
+		}
+		if (transformValue) {
+			args.transform = transformValue;
+		}
+		if (template) {
+			args.valueFormat = template;
+		}
+		await vscode.commands.executeCommand(COMMAND, args);
+	} else {
+		if (uri) {
+			telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOMODIFYTAGS_CONTEXT_MENU, 1);
+		} else {
+			telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOMODIFYTAGS_COMMAND_PALETTE, 1);
+		}
+
+		const args = getCommonArgsOld();
+		if (!args) {
+			return;
+		}
+		const [tags, options, transformValue, template] = await getTagsAndOptions(getGoConfig()?.addTags);
+		if (!tags && !options) {
+			return;
+		}
+		if (tags) {
+			args.push('--add-tags');
+			args.push(tags);
+		}
+		if (options) {
+			args.push('--add-options');
+			args.push(options);
+		}
+		if (transformValue) {
+			args.push('--transform');
+			args.push(transformValue);
+		}
+		if (template) {
+			args.push('--template');
+			args.push(template);
+		}
+		runGomodifytags(args);
+	}
 };
 
-export const removeTags: CommandFactory = () => (commandArgs: GoTagsConfig) => {
-	const args = getCommonArgs();
-	if (!args) {
-		return;
-	}
+export const removeTags: CommandFactory = (_ctx, goCtx) => async (uri: vscode.Uri) => {
+	const useGoplsCommand = goCtx.serverInfo?.Commands?.includes(COMMAND);
+	if (useGoplsCommand) {
+		if (uri) {
+			telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_MODIFY_TAGS_CONTEXT_MENU, 1);
+		} else {
+			telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_MODIFY_TAGS_COMMAND_PALETTE, 1);
+		}
 
-	getTagsAndOptions(<GoTagsConfig>getGoConfig()['removeTags'], commandArgs).then(([tags, options]) => {
+		const args = getCommonArgs();
+		if (!args) {
+			return;
+		}
+		const [tags, options] = await getTagsAndOptions(getGoConfig()?.removeTags);
+		if (!tags && !options) {
+			args.clear = true;
+			args.clearOptions = true;
+		}
+		if (tags) {
+			args.remove = tags;
+		}
+		if (options) {
+			args.removeOptions = options;
+		}
+		vscode.commands.executeCommand(COMMAND, args);
+	} else {
+		if (uri) {
+			telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOMODIFYTAGS_CONTEXT_MENU, 1);
+		} else {
+			telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOMODIFYTAGS_COMMAND_PALETTE, 1);
+		}
+
+		const args = getCommonArgsOld();
+		if (!args) {
+			return;
+		}
+		const [tags, options] = await getTagsAndOptions(getGoConfig()?.removeTags);
 		if (!tags && !options) {
 			args.push('--clear-tags');
 			args.push('--clear-options');
@@ -83,18 +166,19 @@ export const removeTags: CommandFactory = () => (commandArgs: GoTagsConfig) => {
 			args.push(options);
 		}
 		runGomodifytags(args);
-	});
+	}
 };
 
-function getCommonArgs(): string[] {
+// getCommonArgsOld produces the flags used for executing the gomodifytags binary.
+function getCommonArgsOld(): string[] | undefined {
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		vscode.window.showInformationMessage('No editor is active.');
-		return [];
+		return undefined;
 	}
 	if (!editor.document.fileName.endsWith('.go')) {
 		vscode.window.showInformationMessage('Current file is not a Go file.');
-		return [];
+		return undefined;
 	}
 	const args = ['-modified', '-file', editor.document.fileName, '-format', 'json'];
 	if (
@@ -114,59 +198,60 @@ function getCommonArgs(): string[] {
 	return args;
 }
 
-function getTagsAndOptions(config: GoTagsConfig, commandArgs: GoTagsConfig): Thenable<(string | undefined)[]> {
-	const tags = commandArgs && commandArgs.hasOwnProperty('tags') ? commandArgs['tags'] : config['tags'];
-	const options = commandArgs && commandArgs.hasOwnProperty('options') ? commandArgs['options'] : config['options'];
-	const promptForTags =
-		commandArgs && commandArgs.hasOwnProperty('promptForTags')
-			? commandArgs['promptForTags']
-			: config['promptForTags'];
-	const transformValue: string =
-		commandArgs && commandArgs.hasOwnProperty('transform') ? commandArgs['transform'] : config['transform'];
-	const format: string =
-		commandArgs && commandArgs.hasOwnProperty('template') ? commandArgs['template'] : config['template'];
-
-	if (!promptForTags) {
-		return Promise.resolve([tags, options, transformValue, format]);
+// getCommonArgs produces the args used for calling the gopls.modify_tags command.
+function getCommonArgs(): GoModifyTagsArgs | undefined {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) {
+		vscode.window.showInformationMessage('No editor is active.');
+		return undefined;
 	}
-
-	return vscode.window
-		.showInputBox({
-			value: tags,
-			prompt: 'Enter comma separated tag names'
-		})
-		.then((inputTags) => {
-			return vscode.window
-				.showInputBox({
-					value: options,
-					prompt: 'Enter comma separated options'
-				})
-				.then((inputOptions) => {
-					return vscode.window
-						.showInputBox({
-							value: transformValue,
-							prompt: 'Enter transform value'
-						})
-						.then((transformOption) => {
-							return vscode.window
-								.showInputBox({
-									value: format,
-									prompt: 'Enter template value'
-								})
-								.then((template) => {
-									return [inputTags, inputOptions, transformOption, template];
-								});
-						});
-				});
-		});
+	if (!editor.document.fileName.endsWith('.go')) {
+		vscode.window.showInformationMessage('Current file is not a Go file.');
+		return undefined;
+	}
+	const args: GoModifyTagsArgs = {
+		URI: editor.document.uri.toString(),
+		range: editor.selection
+	};
+	return args;
 }
 
-function runGomodifytags(args: string[]) {
-	const gomodifytags = getBinPath('gomodifytags');
+async function getTagsAndOptions(config: GoTagsConfig): Promise<(string | undefined)[]> {
+	if (!config.promptForTags) {
+		return Promise.resolve([config.tags, config.options, config.transform, config.template]);
+	}
+
+	const inputTags = await vscode.window.showInputBox({
+		value: config.tags,
+		prompt: 'Enter comma separated tag names'
+	});
+	const inputOptions = await vscode.window.showInputBox({
+		value: config.options,
+		prompt: 'Enter comma separated options'
+	});
+	const transformOption = await vscode.window.showInputBox({
+		value: config.transform,
+		prompt: 'Enter transform value'
+	});
+	const template = await vscode.window.showInputBox({
+		value: config.template,
+		prompt: 'Enter template value'
+	});
+	return [inputTags, inputOptions, transformOption, template];
+}
+
+async function runGomodifytags(args: string[]) {
+	telemetryReporter.add(TelemetryKey.TOOL_USAGE_GOMODIFYTAGS, 1);
+
+	if (getGoConfig().get('useLanguageServer') === 'true') {
+		promptForFeedback('gomodifytags');
+	}
+
 	const editor = vscode.window.activeTextEditor;
 	if (!editor) {
 		return;
 	}
+	const gomodifytags = getBinPath('gomodifytags');
 	const input = getFileArchive(editor.document);
 	const p = cp.execFile(gomodifytags, args, { env: toolExecutionEnvironment() }, (err, stdout, stderr) => {
 		if (err && (<any>err).code === 'ENOENT') {

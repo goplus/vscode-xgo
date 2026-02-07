@@ -12,7 +12,7 @@ import { LanguageClient } from 'vscode-languageclient/node';
 import { getGoConfig } from '../../src/config';
 import {
 	buildLanguageClient,
-	BuildLanguageClientOption,
+	LanguageServerConfig,
 	buildLanguageServerConfig,
 	toServerInfo
 } from '../../src/language/goLanguageServer';
@@ -108,14 +108,16 @@ export class Env {
 		if (!goConfig) {
 			goConfig = getGoConfig();
 		}
-		const cfg: BuildLanguageClientOption = await buildLanguageServerConfig(
+		const cfg: LanguageServerConfig = await buildLanguageServerConfig(
 			Object.create(goConfig, {
 				useLanguageServer: { value: true },
 				languageServerFlags: { value: ['-rpc.trace'] } // enable rpc tracing to monitor progress reports
 			})
 		);
-		cfg.outputChannel = this.fakeOutputChannel; // inject our fake output channel.
 		this.goCtx.latestConfig = cfg;
+		// Inject fake output channel.
+		this.goCtx.serverOutputChannel = this.fakeOutputChannel;
+		this.goCtx.serverTraceChannel = this.fakeOutputChannel;
 		this.languageClient = await buildLanguageClient(this.goCtx, cfg);
 		if (!this.languageClient) {
 			throw new Error('Language client not initialized.');
@@ -143,14 +145,11 @@ export class Env {
 	public async teardown() {
 		try {
 			await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
-			await this.languageClient?.stop(1000); // 1s timeout
+			await this.languageClient?.stop(10000); // 10s timeout
 		} catch (e) {
-			console.log(`failed to stop gopls within 1sec: ${e}`);
+			console.log(`failed to stop gopls within 10sec: ${e}`);
+			this.flushTrace(true);
 		} finally {
-			if (this.languageClient?.isRunning()) {
-				console.log(`failed to stop language client on time: ${this.languageClient?.state}`);
-				this.flushTrace(true);
-			}
 			for (const d of this.disposables) {
 				d.dispose();
 			}

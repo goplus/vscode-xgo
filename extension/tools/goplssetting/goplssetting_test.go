@@ -5,11 +5,11 @@
 package goplssetting
 
 import (
-	"bytes"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestRun(t *testing.T) {
@@ -33,52 +33,58 @@ func TestWriteAsVSCodeSettings(t *testing.T) {
 	}
 	testCases := []struct {
 		name string
-		in   *OptionJSON
-		out  string
+		in   *Option
+		want map[string]*Object
 	}{
 		{
 			name: "boolean",
-			in: &OptionJSON{
+			in: &Option{
 				Name:    "verboseOutput",
 				Type:    "bool",
 				Doc:     "verboseOutput enables additional debug logging.\n",
 				Default: "false",
 			},
-			out: `"verboseOutput": {
-					"type": "boolean",
-					"markdownDescription": "verboseOutput enables additional debug logging.\n",
-					"default": false,
-					"scope": "resource"
-				}`,
+			want: map[string]*Object{
+				"verboseOutput": {
+					Type:                "boolean",
+					MarkdownDescription: "verboseOutput enables additional debug logging.\n",
+					Default:             false,
+					Scope:               "resource",
+				},
+			},
 		},
 		{
 			name: "time",
-			in: &OptionJSON{
+			in: &Option{
 				Name:    "completionBudget",
 				Type:    "time.Duration",
 				Default: "\"100ms\"",
 			},
-			out: `"completionBudget": {
-					"type": "string",
-					"default": "100ms",
-					"scope": "resource"
-				}`,
+			want: map[string]*Object{
+				"completionBudget": {
+					Type:    "string",
+					Default: "100ms",
+					Scope:   "resource",
+				},
+			},
 		},
 		{
 			name: "map",
-			in: &OptionJSON{
+			in: &Option{
 				Name:    "analyses",
 				Type:    "map[string]bool",
 				Default: "{}",
 			},
-			out: `"analyses":{
-					"type": "object",
-					"scope": "resource"
-				}`,
+			want: map[string]*Object{
+				"analyses": {
+					Type:  "object",
+					Scope: "resource",
+				},
+			},
 		},
 		{
 			name: "enum",
-			in: &OptionJSON{
+			in: &Option{
 				Name: "matcher",
 				Type: "enum",
 				EnumValues: []EnumValue{
@@ -97,63 +103,82 @@ func TestWriteAsVSCodeSettings(t *testing.T) {
 				},
 				Default: "\"Fuzzy\"",
 			},
-			out: `"matcher": {
- 					"type": "string",
-					"enum": [ "CaseInsensitive", "CaseSensitive", "Fuzzy" ],
-					"markdownEnumDescriptions": [ "","","" ],
-					"default": "Fuzzy",
-					"scope": "resource"
-				}`,
+			want: map[string]*Object{
+				"matcher": {
+					Type:                     "string",
+					Enum:                     []any{"CaseInsensitive", "CaseSensitive", "Fuzzy"},
+					MarkdownEnumDescriptions: []string{"", "", ""},
+					Default:                  "Fuzzy",
+					Scope:                    "resource",
+				},
+			},
+		},
+		{
+			name: "mixedEnum",
+			in: &Option{
+				Name: "linksInHover",
+				Type: "enum",
+				EnumValues: []EnumValue{
+					{
+						Value: "false",
+						Doc:   "`false`: ...",
+					},
+					{
+						Value: "true",
+						Doc:   "`true`: ...",
+					},
+					{
+						Value: "\"gopls\"",
+						Doc:   "`\"gopls\"`: ...",
+					},
+				},
+				Default: "true",
+			},
+			want: map[string]*Object{
+				"linksInHover": {
+					Type:                     []string{"boolean", "string"},
+					Enum:                     []any{false, true, "gopls"},
+					MarkdownEnumDescriptions: []string{"`false`: ...", "`true`: ...", "`\"gopls\"`: ..."},
+					Scope:                    "resource",
+					Default:                  true,
+				},
+			},
 		},
 		{
 			name: "array",
-			in: &OptionJSON{
+			in: &Option{
 				Name:    "directoryFilters",
 				Type:    "[]string",
 				Default: "[\"-node_modules\", \"-vendor\"]",
 			},
-			out: `"directoryFilters": {
-					"type": "array",
-					"default": ["-node_modules", "-vendor"],
-					"scope": "resource"
-				}`,
+			want: map[string]*Object{
+				"directoryFilters": {
+					Type:    "array",
+					Default: []string{"-node_modules", "-vendor"},
+					Scope:   "resource",
+				},
+			},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			options := []*OptionJSON{tc.in}
-			b, err := asVSCodeSettings(options)
+			options := []*Option{tc.in}
+			got, err := asVSCodeSettings(options)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got, want := normalize(t, string(b)), normalize(t, `
-			{
+			want := map[string]*Object{
 				"gopls": {
-					"type": "object",
-					"markdownDescription": "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",
-					"scope": "resource",
-					"properties": {
-				       `+tc.out+`
-					}
-				}
-			}`); got != want {
-				t.Errorf("writeAsVSCodeSettings = %v, want %v", got, want)
+					Type:                "object",
+					MarkdownDescription: "Configure the default Go language server ('gopls'). In most cases, configuring this section is unnecessary. See [the documentation](https://github.com/golang/tools/blob/master/gopls/doc/settings.md) for all available settings.",
+					Scope:               "resource",
+					Properties:          tc.want,
+				},
+			}
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("writeAsVSCodeSettings = %v; diff = %v", got, diff)
 			}
 		})
 	}
-}
-
-func normalize(t *testing.T, in string) string {
-	t.Helper()
-	cmd := exec.Command("jq")
-	cmd.Stdin = strings.NewReader(in)
-	stderr := new(bytes.Buffer)
-	cmd.Stderr = stderr
-
-	out, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("%s\n%s\nfailed to run jq: %v", in, stderr, err)
-	}
-	return string(out)
 }

@@ -217,7 +217,12 @@ suite('Go Test Explorer', () => {
 
 		const env = new Env();
 
-		this.afterEach(async function () {
+		this.beforeAll(() => {
+			testExplorer = GoTestExplorer.new(ctx, env.goCtx);
+			ctx.subscriptions.push(testExplorer);
+		});
+
+		this.afterAll(async function () {
 			await env.teardown();
 			// Note: this shouldn't use () => {...}. Arrow functions do not have 'this'.
 			// I don't know why but this.currentTest.state does not have the expected value when
@@ -233,8 +238,6 @@ suite('Go Test Explorer', () => {
 			// (so initialize request doesn't include workspace dir info). The codelens directory was
 			// used in the previous test suite. Figure out why.
 			await env.startGopls(uri.fsPath, undefined, fixtureDir);
-
-			testExplorer = GoTestExplorer.setup(ctx, env.goCtx);
 
 			document = await forceDidOpenTextDocument(workspace, testExplorer, uri);
 			const tests = testExplorer.resolver.find(document.uri).map((x) => x.id);
@@ -358,7 +361,8 @@ suite('Go Test Explorer', () => {
 				await explorer.runner.run({
 					include: [tests[0]],
 					exclude: undefined,
-					profile: undefined
+					profile: undefined,
+					preserveFocus: false
 				});
 				assert.strictEqual(runStub.callCount, 1, 'Expected goTest to be called once');
 				assert.deepStrictEqual(runStub.lastCall.args[0].functions, ['TestFoo']);
@@ -380,7 +384,8 @@ suite('Go Test Explorer', () => {
 				await explorer.runner.run({
 					include: [tests[0]],
 					exclude: undefined,
-					profile: undefined
+					profile: undefined,
+					preserveFocus: false
 				});
 				assert.strictEqual(runStub.callCount, 2, 'Expected goTest to be called twice');
 				assert.deepStrictEqual(runStub.firstCall.args[0].functions, ['TestFoo']);
@@ -428,7 +433,8 @@ suite('Go Test Explorer', () => {
 				await explorer.runner.run({
 					include: [test],
 					exclude: undefined,
-					profile: undefined
+					profile: undefined,
+					preserveFocus: false
 				});
 				assert.strictEqual(runStub.callCount, 1, 'Expected goTest to be called once');
 
@@ -453,7 +459,8 @@ suite('Go Test Explorer', () => {
 				await explorer.runner.run({
 					include: [test],
 					exclude: undefined,
-					profile: undefined
+					profile: undefined,
+					preserveFocus: false
 				});
 				assert.strictEqual(runStub.callCount, 1, 'Expected goTest to be called once');
 

@@ -106,13 +106,13 @@ export const expandGoStatusBar: CommandFactory = (ctx, goCtx) => async () => {
 				case 'Choose Go Environment':
 					vscode.commands.executeCommand('go.environment.choose');
 					break;
-				case `${languageServerIcon}Open 'gopls' trace`:
+				case `${languageServerIcon} Open 'gopls' trace`:
 					if (serverOutputChannel) {
 						serverOutputChannel.show();
 					}
 					break;
 				case 'Install Go Language Server':
-					vscode.commands.executeCommand('go.tools.install', [allToolsInformation['gopls']]);
+					vscode.commands.executeCommand('go.tools.install', [allToolsInformation.get('gopls')!]);
 					break;
 				case "Open 'go.work'":
 				case "Open 'go.mod'":

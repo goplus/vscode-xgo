@@ -1,0 +1,2 @@
+stat /tmp/artifacts/go-0.43.0.vsix
+npx vsce publish -i /tmp/artifacts/go-0.43.0.vsix --pre-release

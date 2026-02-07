@@ -13,6 +13,7 @@ import moment = require('moment');
 import os = require('os');
 import path = require('path');
 import { promisify } from 'util';
+import semverCoerce from 'semver/functions/coerce';
 import { getGoConfig, extensionInfo } from './config';
 import { toolInstallationEnvironment } from './goEnv';
 import { addGoStatus, goEnvStatusbarItem, outputChannel, removeGoStatus } from './goStatus';
@@ -65,8 +66,9 @@ function canChooseGoEnvironment() {
 
 	return { ok: true };
 }
+
 /**
- * Present a command palette menu to the user to select their go binary
+ * Presents a command palette menu to the user to select their go binary.
  */
 export const chooseGoEnvironment: CommandFactory = () => async () => {
 	if (!goEnvStatusbarItem) {
@@ -78,48 +80,63 @@ export const chooseGoEnvironment: CommandFactory = () => async () => {
 		return;
 	}
 
-	// fetch default go and uninstalled go versions
-	let defaultOption: GoEnvironmentOption | undefined;
-	let uninstalledOptions: GoEnvironmentOption[];
-	let goSDKOptions: GoEnvironmentOption[];
+	let options: vscode.QuickPickItem[] = [
+		// Option to choose go binary from file browser.
+		{
+			label: CHOOSE_FROM_FILE_BROWSER,
+			description: 'Select the go binary to use'
+		},
+		// Option to clear the existing selection.
+		{ label: CLEAR_SELECTION }
+	];
 	try {
-		[defaultOption, uninstalledOptions, goSDKOptions] = await Promise.all([
-			getDefaultGoOption(),
-			fetchDownloadableGoVersions(),
-			getSDKGoOptions()
-		]);
+		const seenDescriptions = new Set<string>();
+		const seenLabels = new Set<string>();
+		// addOption adds the option to the input array only if it is unique,
+		// based on its description and label.
+		const addOption = (options: GoEnvironmentOption[], option: GoEnvironmentOption | undefined) => {
+			if (option === undefined) {
+				return;
+			}
+			if (!seenDescriptions.has(option.description) && !seenLabels.has(option.label)) {
+				seenDescriptions.add(option.description);
+				seenLabels.add(option.label);
+				options.push(option);
+			}
+		};
+
+		const defaultOption = await Promise.resolve(getDefaultGoOption());
+		const goSDKOptions = await getSDKGoOptions();
+
+		const local: GoEnvironmentOption[] = [];
+		addOption(local, defaultOption);
+		goSDKOptions.forEach((option) => addOption(local, option));
+
+		if (local.length > 0) {
+			options.push({ kind: vscode.QuickPickItemKind.Separator, label: 'Locally discovered' });
+			options.push(...local);
+		}
+
+		const downloadableOptions = await getDownloadableGoVersions();
+		const downloadable: GoEnvironmentOption[] = [];
+		downloadableOptions.forEach((option) => addOption(downloadable, option));
+
+		if (downloadable.length > 0) {
+			options.push({ kind: vscode.QuickPickItemKind.Separator, label: 'Downloadable' });
+			options.push(...downloadable);
+		}
 	} catch (e) {
 		vscode.window.showErrorMessage((e as Error).message);
 		return;
 	}
 
-	// create quick pick items
-	const defaultQuickPick = defaultOption ? [defaultOption] : [];
-
-	// dedup options by eliminating duplicate paths (description)
-	const clearOption: vscode.QuickPickItem = { label: CLEAR_SELECTION };
-	const filePickerOption: vscode.QuickPickItem = {
-		label: CHOOSE_FROM_FILE_BROWSER,
-		description: 'Select the go binary to use'
-	};
-	// TODO(hyangah): Add separators after clearOption if github.com/microsoft/vscode#74967 is resolved.
-	const options = [filePickerOption, clearOption, ...defaultQuickPick, ...goSDKOptions, ...uninstalledOptions].reduce(
-		(opts, nextOption) => {
-			if (opts.find((op) => op.description === nextOption.description || op.label === nextOption.label)) {
-				return opts;
-			}
-			return [...opts, nextOption];
-		},
-		[] as vscode.QuickPickItem[]
-	);
-
-	// get user's selection, return if none was made
+	// Get user's selection, return if none was made.
 	const selection = await vscode.window.showQuickPick<vscode.QuickPickItem>(options);
 	if (!selection) {
 		return;
 	}
 
-	// update currently selected go
+	// Update currently selected go.
 	try {
 		await setSelectedGo(selection);
 	} catch (e) {
@@ -128,17 +145,18 @@ export const chooseGoEnvironment: CommandFactory = () => async () => {
 };
 
 /**
- * update the selected go path and label in the workspace state
+ * Updates the selected go path and label in the workspace state.
+ * @returns true if set successfully, false otherwise.
  */
 export async function setSelectedGo(goOption: vscode.QuickPickItem, promptReload = true): Promise<boolean> {
 	if (!goOption) {
 		return false;
 	}
 
-	// if the selected go version is not installed, install it
+	// If the selected go version is not installed, install it.
 	if (goOption instanceof GoEnvironmentOption) {
 		const o = goOption.available ? (goOption as GoEnvironmentOption) : await downloadGo(goOption);
-		// check that the given binary is not already at the beginning of the PATH
+		// Check that the given binary is not already at the beginning of the PATH.
 		const go = await getGoVersion();
 		if (!!go && (go.binaryPath === o.binpath || 'Go ' + go.format() === o.label)) {
 			return false;
@@ -183,7 +201,8 @@ export async function setSelectedGo(goOption: vscode.QuickPickItem, promptReload
 			}
 		}
 	}
-	// prompt the user to reload the window.
+	// Show modal dialog to the user to reload the window, this require user's
+	// immediate attention.
 	// promptReload defaults to true and should only be false for tests.
 	if (promptReload) {
 		const choice = await vscode.window.showWarningMessage(
@@ -203,7 +222,9 @@ export async function setSelectedGo(goOption: vscode.QuickPickItem, promptReload
 	return true;
 }
 
-// downloadGo downloads the specified go version available in dl.golang.org.
+/**
+ * Downloads the specified go version available in dl.golang.org.
+ */
 async function downloadGo(goOption: GoEnvironmentOption): Promise<GoEnvironmentOption> {
 	if (goOption.available) {
 		return Promise.resolve(goOption);
@@ -217,7 +238,7 @@ async function downloadGo(goOption: GoEnvironmentOption): Promise<GoEnvironmentO
 			location: vscode.ProgressLocation.Notification
 		},
 		async () => {
-			outputChannel.appendLine(`go install ${goOption.binpath}@latest`);
+			outputChannel.info(`go install ${goOption.binpath}@latest`);
 			const result = await installTool({
 				name: newExecutableName,
 				importPath: goOption.binpath,
@@ -227,11 +248,11 @@ async function downloadGo(goOption: GoEnvironmentOption): Promise<GoEnvironmentO
 			});
 			if (result) {
 				outputChannel.error(`Error installing ${goOption.binpath}: ${result}`);
-				throw new Error('Could not install ${goOption.binpath}');
+				throw new Error(`Could not install ${goOption.binpath} - check logs in the "Go" output channel`);
 			}
 			// run `goX.X download`
 			const goXExecutable = getBinPath(newExecutableName);
-			outputChannel.appendLine(`${goXExecutable} download`);
+			outputChannel.info(`${goXExecutable} download`);
 			try {
 				await execFile(goXExecutable, ['download']);
 			} catch (downloadErr) {
@@ -239,7 +260,7 @@ async function downloadGo(goOption: GoEnvironmentOption): Promise<GoEnvironmentO
 				throw new Error('Could not download Go version.');
 			}
 
-			outputChannel.appendLine(`Checking newly downloaded ${goOption.label} SDK`);
+			outputChannel.info(`Checking newly downloaded ${goOption.label} SDK`);
 
 			let sdkPath = '';
 			try {
@@ -258,17 +279,19 @@ async function downloadGo(goOption: GoEnvironmentOption): Promise<GoEnvironmentO
 				throw new Error(`SDK path does not exist: ${sdkPath}`);
 			}
 
-			outputChannel.appendLine(`${goOption.label} is available in ${sdkPath}`);
+			outputChannel.info(`${goOption.label} is available in ${sdkPath}`);
 
 			const binpath = path.join(sdkPath, 'bin', correctBinname('go'));
 			const newOption = new GoEnvironmentOption(binpath, goOption.label);
-			outputChannel.appendLine('Success!');
+			outputChannel.info('Success!');
 			return newOption;
 		}
 	);
 }
 
-// PATH value cached before addGoRuntimeBaseToPath modified.
+/**
+ * PATH value cached before addGoRuntimeBaseToPath modified.
+ */
 let defaultPathEnv = '';
 
 function pathEnvVarName(): string | undefined {
@@ -281,9 +304,20 @@ function pathEnvVarName(): string | undefined {
 	}
 }
 
-// addGoRuntimeBaseToPATH adds the given path to the front of the PATH environment variable.
-// It removes duplicates.
-// TODO: can we avoid changing PATH but utilize toolExecutionEnv?
+/**
+ * These options overwrite profiles such as `.bashrc`.
+ * Users who do not want this behavior should set `go.terminal.activateEnvironment` to `false`.
+ */
+const envVarMutatorOptions: vscode.EnvironmentVariableMutatorOptions = {
+	applyAtProcessCreation: true,
+	applyAtShellIntegration: true
+};
+
+/**
+ * addGoRuntimeBaseToPATH adds the given path to the front of the PATH
+ * environment variable. It removes duplicates.
+ * TODO: can we avoid changing PATH but utilize toolExecutionEnv?
+ */
 export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 	if (!newGoRuntimeBase) {
 		return;
@@ -305,10 +339,10 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 
 	outputChannel.debug(`addGoRuntimeBase(${newGoRuntimeBase}) when PATH=${defaultPathEnv}`);
 
-	// calling this multiple times will override the previous value.
+	// Calling this multiple times will override the previous value.
 	// environmentVariableCollection.clear();
 	if (process.platform !== 'darwin') {
-		environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter);
+		environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter, envVarMutatorOptions);
 	} else {
 		// When '-l' or '--login' flags are set, the terminal will invoke a login
 		// shell again and the paths from the user's login shell will be prepended
@@ -330,7 +364,7 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 			}
 			terminalCreationListener = vscode.window.onDidOpenTerminal(updateIntegratedTerminal);
 		} else {
-			environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter);
+			environmentVariableCollection?.prepend(pathEnvVar, newGoRuntimeBase + path.delimiter, envVarMutatorOptions);
 		}
 	}
 
@@ -339,12 +373,13 @@ export function addGoRuntimeBaseToPATH(newGoRuntimeBase: string) {
 	pathVars.unshift(newGoRuntimeBase);
 	process.env[pathEnvVar] = pathVars.join(path.delimiter);
 }
-
-// Clear terminal PATH environment modification previously installed
-// using addGoRuntimeBaseToPATH.
-// In particular, changes to vscode.EnvironmentVariableCollection persist across
-// vscode sessions, so when we decide not to mutate PATH, we need to clear
-// the preexisting changes.
+/**
+ * Clears terminal PATH environment modification previously installed using
+ * addGoRuntimeBaseToPATH.
+ * In particular, changes to vscode.EnvironmentVariableCollection persist across
+ * vscode sessions, so when we decide not to mutate PATH, we need to clear the
+ * preexisting changes.
+ */
 export function clearGoRuntimeBaseFromPATH() {
 	if (terminalCreationListener) {
 		const l = terminalCreationListener;
@@ -366,12 +401,13 @@ function isTerminalOptions(
 }
 
 /**
- * update the PATH variable in the given terminal to default to the currently selected Go
+ * Updates the PATH variable in the given terminal to default to the currently
+ * selected Go.
  */
 export async function updateIntegratedTerminal(terminal: vscode.Terminal): Promise<void> {
 	if (
 		!terminal ||
-		// don't interfere if this terminal was created to run a Go task (goTaskProvider.ts).
+		// Don't interfere if this terminal was created to run a Go task (goTaskProvider.ts).
 		// Go task uses ProcessExecution which results in the terminal having `go` or `go.exe`
 		// as its shellPath.
 		(isTerminalOptions(terminal.creationOptions) &&
@@ -385,7 +421,7 @@ export async function updateIntegratedTerminal(terminal: vscode.Terminal): Promi
 		return;
 	}
 
-	// append the goroot to the beginning of the PATH so it takes precedence
+	// Append the goroot to the beginning of the PATH so it takes precedence.
 	// TODO: add support for more terminal names
 	if (vscode.env.shell.search(/(powershell|pwsh)$/i) !== -1) {
 		terminal.sendText(`$env:Path="${gorootBin};$env:Path"`, true);
@@ -400,14 +436,14 @@ export async function updateIntegratedTerminal(terminal: vscode.Terminal): Promi
 }
 
 /**
- * retreive the current selected Go from the workspace state
+ * Retreives the current selected Go from the workspace state.
  */
 export function getSelectedGo(): GoEnvironmentOption {
 	return getFromWorkspaceState('selectedGo');
 }
 
 /**
- * return reference to the statusbar item
+ * @returns reference to the statusbar item.
  */
 export function getGoEnvironmentStatusbarItem(): vscode.StatusBarItem {
 	return goEnvStatusbarItem;
@@ -427,8 +463,11 @@ export function formatGoVersion(version?: GoVersion): string {
 	}
 }
 
+/**
+ * @returns go versions available in `$HOME/sdk`.
+ */
 async function getSDKGoOptions(): Promise<GoEnvironmentOption[]> {
-	// get list of Go versions
+	// Get list of Go versions.
 	const sdkPath = path.join(os.homedir(), 'sdk');
 
 	if (!(await dirExists(sdkPath))) {
@@ -436,35 +475,48 @@ async function getSDKGoOptions(): Promise<GoEnvironmentOption[]> {
 	}
 	const readdir = promisify(fs.readdir);
 	const subdirs = await readdir(sdkPath);
-	// the dir happens to be the version, which will be used as the label
-	// the path is assembled and used as the description
-	return subdirs.map(
-		(dir: string) =>
-			new GoEnvironmentOption(path.join(sdkPath, dir, 'bin', correctBinname('go')), dir.replace('go', 'Go '))
+	const stat = promisify(fs.stat);
+
+	// The dir happens to be the version, which will be used as the label.
+	// The path is assembled and used as the description.
+	const options = await Promise.all(
+		subdirs.map(async (dir) => {
+			const binpath = path.join(sdkPath, dir, 'bin', correctBinname('go'));
+			try {
+				if ((await stat(binpath)).isFile()) {
+					return new GoEnvironmentOption(binpath, dir.replace('go', 'Go '));
+				}
+			} catch {
+				// ignore
+			}
+		})
 	);
+	return options.filter(Boolean) as GoEnvironmentOption[];
 }
 
 export async function getDefaultGoOption(): Promise<GoEnvironmentOption | undefined> {
-	// make goroot default to go.goroot
+	// Make goroot default to "go.goroot" in vscode-go settings.
 	const goroot = getCurrentGoRoot();
 	if (!goroot) {
 		return undefined;
 	}
 
-	// set Go version and command
+	// Set Go version and command.
 	const version = await getGoVersion();
 	return new GoEnvironmentOption(path.join(goroot, 'bin', correctBinname('go')), formatGoVersion(version));
 }
 
 /**
- * make a web request to get versions of Go
+ * Makes a web request to get versions of Go.
  */
 interface GoVersionWebResult {
 	version: string;
 	stable: boolean;
 }
-
-async function fetchDownloadableGoVersions(): Promise<GoEnvironmentOption[]> {
+/**
+ * @returns downloadable go versions from `golang.org/dl`.
+ */
+async function getDownloadableGoVersions(): Promise<GoEnvironmentOption[]> {
 	// TODO: use `go list -m --versions -json go` when go1.20+ is the minimum supported version.
 	// fetch information about what Go versions are available to install
 	let webResults;
@@ -478,13 +530,13 @@ async function fetchDownloadableGoVersions(): Promise<GoEnvironmentOption[]> {
 	if (!webResults) {
 		return [];
 	}
-	// turn the web result into GoEnvironmentOption model
-	return webResults.reduce((opts, result: GoVersionWebResult) => {
+	// Turn the web result into GoEnvironmentOption model.
+	return webResults.reduce((opts: GoEnvironmentOption[], result: GoVersionWebResult) => {
 		// TODO: allow downloading from different sites
 		const dlPath = `golang.org/dl/${result.version}`;
 		const label = result.version.replace('go', 'Go ');
 		return [...opts, new GoEnvironmentOption(dlPath, label, false)];
-	}, [] as GoEnvironmentOption[]);
+	}, []);
 }
 
 export const latestGoVersionKey = 'latestGoVersions';
@@ -501,10 +553,10 @@ export async function getLatestGoVersions(): Promise<GoEnvironmentOption[]> {
 	if (cachedResults && now - cachedResults.timestamp < timeout) {
 		results = cachedResults.goVersions;
 	} else {
-		// fetch the latest supported Go versions
+		// Fetch the latest supported Go versions.
 		try {
-			// fetch the latest Go versions and cache the results
-			results = await fetchDownloadableGoVersions();
+			// Fetch the latest Go versions and cache the results.
+			results = await getDownloadableGoVersions();
 			await updateGlobalState(latestGoVersionKey, {
 				timestamp: now,
 				goVersions: results
@@ -518,7 +570,12 @@ export async function getLatestGoVersions(): Promise<GoEnvironmentOption[]> {
 }
 
 const STATUS_BAR_ITEM_NAME = 'Go Update Notification';
-const dismissedGoVersionUpdatesKey = 'dismissedGoVersionUpdates';
+
+/**
+ * Key for the global state that tracks Go versions for which the user has
+ * explicitly dismissed the upgrade notification.
+ */
+const DISMISSED_GO_VERSION_KEY = 'dismissedGoVersionUpdates';
 
 export async function offerToInstallLatestGoVersion(ctx: Pick<vscode.ExtensionContext, 'subscriptions'>) {
 	if (extensionInfo.isInCloudIDE) {
@@ -533,83 +590,96 @@ export async function offerToInstallLatestGoVersion(ctx: Pick<vscode.ExtensionCo
 		return;
 	}
 
-	let options = await getLatestGoVersions();
+	let latestVersions = await getLatestGoVersions();
 
-	// filter out Go versions the user has already dismissed
-	let dismissedOptions: GoEnvironmentOption[];
-	dismissedOptions = await getFromGlobalState(dismissedGoVersionUpdatesKey);
-	if (dismissedOptions) {
-		options = options.filter((version) => !dismissedOptions.find((x) => x.label === version.label));
-	}
-
-	// compare to current go version.
 	const currentVersion = await getGoVersion();
-	if (currentVersion) {
-		options = options.filter((version) => currentVersion.lt(version.label));
+
+	// The official support for vscode-go is last three minor versions of Go.
+	// Try to start with last four minor versions.
+	let minimumVersion = semverCoerce(latestVersions[0].label);
+	if (minimumVersion) {
+		minimumVersion.minor = minimumVersion.minor - 3;
+		minimumVersion.patch = 0;
 	}
 
-	// notify user that there is a newer version of Go available
-	if (options.length > 0) {
-		const versionsText = options.map((x) => x.label).join(', ');
-		const statusBarItem = addGoStatus(STATUS_BAR_ITEM_NAME);
-		statusBarItem.name = STATUS_BAR_ITEM_NAME;
-		statusBarItem.text = 'New Go version is available';
-		statusBarItem.detail = versionsText;
-		statusBarItem.command = {
-			title: 'Upgrade',
-			command: 'go.promptforgoinstall',
-			arguments: [options],
-			tooltip: 'Upgrade or silence notification'
-		};
-		// TODO: Error level is more visible. Consider to make it configurable?
-		statusBarItem.severity = vscode.LanguageStatusSeverity.Warning;
+	const download = {
+		title: 'Download',
+		async command() {
+			await vscode.env.openExternal(vscode.Uri.parse('https://go.dev/dl/'));
+		}
+	};
 
+	// Popup if the Go version is beyond support.
+	if (minimumVersion && currentVersion.lt(minimumVersion.format())) {
+		let text = `The minimum supported Go version is ${minimumVersion.format()}. Please update your Go to ensure the extension functions correctly. You are currently using ${formatGoVersion(
+			currentVersion
+		)}.`;
+		vscode.window.showInformationMessage(text, download).then((selection) => {
+			selection?.command();
+		});
+	}
+
+	// Filter out Go versions the user has already dismissed.
+	const dismissedVersions: GoEnvironmentOption[] = await getFromGlobalState(DISMISSED_GO_VERSION_KEY);
+	if (dismissedVersions) {
+		latestVersions = latestVersions.filter((version) => !dismissedVersions.find((x) => x.label === version.label));
+	}
+
+	// Filter out Go versions below the current go versions.
+	if (currentVersion) {
+		latestVersions = latestVersions.filter((version) => currentVersion.lt(version.label));
+	}
+
+	// Notify user that there is a newer version of Go available.
+	if (latestVersions.length > 0) {
 		ctx.subscriptions.push(
 			vscode.commands.registerCommand('go.promptforgoinstall', () => {
-				const download = {
-					title: 'Download',
-					async command() {
-						await vscode.env.openExternal(vscode.Uri.parse('https://go.dev/dl/'));
-					}
-				};
-
 				const neverAgain = {
 					title: "Don't Show Again",
 					async command() {
-						// mark these versions as seen
-						dismissedOptions = await getFromGlobalState(dismissedGoVersionUpdatesKey);
-						if (!dismissedOptions) {
-							dismissedOptions = [];
+						// Mark these versions as seen.
+						let dismissedVersions: GoEnvironmentOption[] = await getFromGlobalState(
+							DISMISSED_GO_VERSION_KEY
+						);
+						if (!dismissedVersions) {
+							dismissedVersions = [];
 						}
-						options.forEach((version) => {
-							dismissedOptions.push(version);
+						latestVersions.forEach((version) => {
+							dismissedVersions.push(version);
 						});
-						await updateGlobalState(dismissedGoVersionUpdatesKey, dismissedOptions);
+						await updateGlobalState(DISMISSED_GO_VERSION_KEY, dismissedVersions);
 					}
 				};
 
-				let versionsText: string;
-				if (options.length > 1) {
-					versionsText = `${options
+				let text: string;
+				if (latestVersions.length > 1) {
+					text = `${latestVersions
 						.map((x) => x.label)
 						.reduce((prev, next) => {
 							return prev + ' and ' + next;
 						})} are available`;
 				} else {
-					versionsText = `${options[0].label} is available`;
+					text = `${latestVersions[0].label} is available.`;
 				}
-
-				vscode.window
-					.showInformationMessage(
-						`${versionsText}. You are currently using ${formatGoVersion(currentVersion)}.`,
-						download,
-						neverAgain
-					)
-					.then((selection) => {
-						selection?.command();
-						removeGoStatus(STATUS_BAR_ITEM_NAME);
-					});
+				text = text + ` You are currently using ${formatGoVersion(currentVersion)}.`;
+				vscode.window.showInformationMessage(text, download, neverAgain).then((selection) => {
+					selection?.command();
+					removeGoStatus(STATUS_BAR_ITEM_NAME);
+				});
 			})
 		);
+
+		const statusBarItem = addGoStatus(STATUS_BAR_ITEM_NAME);
+		statusBarItem.name = STATUS_BAR_ITEM_NAME;
+		statusBarItem.text = 'New Go version is available';
+		statusBarItem.detail = latestVersions.map((x) => x.label).join(', ');
+		statusBarItem.command = {
+			title: 'Upgrade',
+			command: 'go.promptforgoinstall',
+			arguments: [latestVersions],
+			tooltip: 'Upgrade or silence notification'
+		};
+		// TODO: Error level is more visible. Consider to make it configurable?
+		statusBarItem.severity = vscode.LanguageStatusSeverity.Warning;
 	}
 }

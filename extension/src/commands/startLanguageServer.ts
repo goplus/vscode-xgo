@@ -11,13 +11,10 @@ import { GoExtensionContext } from '../context';
 import { outputChannel, updateLanguageServerIconGoStatusBar } from '../goStatus';
 import {
 	buildLanguageClient,
-	buildLanguageClientOption,
 	buildLanguageServerConfig,
-	errorKind,
 	RestartReason,
 	scheduleGoplsSuggestions,
 	stopLanguageClient,
-	suggestGoplsIssueReport,
 	toServerInfo,
 	updateRestartHistory
 } from '../language/goLanguageServer';
@@ -31,7 +28,6 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 	return async (reason: RestartReason = RestartReason.MANUAL) => {
 		const goConfig = getGoConfig();
 		const cfg = await buildLanguageServerConfig(goConfig);
-
 		if (typeof reason === 'string') {
 			updateRestartHistory(goCtx, reason, cfg.enabled);
 		}
@@ -39,17 +35,14 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 		const unlock = await languageServerStartMutex.lock();
 		goCtx.latestConfig = cfg;
 		try {
-			if (reason === RestartReason.MANUAL) {
-				await suggestGoplsIssueReport(
-					goCtx,
-					cfg,
-					"Looks like you're about to manually restart the language server.",
-					errorKind.manualRestart
-				);
-			}
+			outputChannel.info(`Try to start language server - ${reason} (enabled: ${cfg.enabled})`);
+
 			// If the client has already been started, make sure to clear existing
 			// diagnostics and stop it.
 			if (goCtx.languageClient) {
+				goCtx.serverOutputChannel?.append(
+					`Request to stop language server - ${reason} (enabled: ${cfg.enabled})`
+				);
 				await stopLanguageClient(goCtx);
 			}
 			updateStatus(goCtx, goConfig, false);
@@ -62,6 +55,7 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 			}
 
 			if (!shouldActivateLanguageFeatures()) {
+				outputChannel.warn('Cannot activate language features - unsupported environment');
 				return;
 			}
 
@@ -72,6 +66,7 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 			}
 
 			if (!cfg.enabled) {
+				outputChannel.warn('Language server is disabled');
 				const legacyService = new LegacyLanguageService();
 				goCtx.legacyLanguageService = legacyService;
 				ctx.subscriptions.push(legacyService);
@@ -79,7 +74,7 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 				return;
 			}
 
-			goCtx.languageClient = await buildLanguageClient(goCtx, buildLanguageClientOption(goCtx, cfg));
+			goCtx.languageClient = await buildLanguageClient(goCtx, cfg);
 			await goCtx.languageClient.start();
 			goCtx.serverInfo = toServerInfo(goCtx.languageClient.initializeResult);
 			goCtx.telemetryService = new TelemetryService(
@@ -87,11 +82,12 @@ export const startLanguageServer: CommandFactory = (ctx, goCtx) => {
 				ctx.globalState,
 				goCtx.serverInfo?.Commands
 			);
-
-			console.log(`Server: ${JSON.stringify(goCtx.serverInfo, null, 2)}`);
+			outputChannel.info(
+				`Running language server ${goCtx.serverInfo?.Name}(${goCtx.serverInfo?.Version}/${goCtx.serverInfo?.GoVersion})`
+			);
 		} catch (e) {
 			const msg = `Error starting language server: ${e}`;
-			console.log(msg);
+			outputChannel.error(msg);
 			goCtx.serverOutputChannel?.append(msg);
 		} finally {
 			updateStatus(goCtx, goConfig, true);

@@ -117,15 +117,19 @@ Displays test coverage in the current package.
 
 ### `Go: Generate Unit Tests For Package`
 
-Generates unit tests for the current package
+Generates unit tests for the current package using gotests
 
 ### `Go: Generate Unit Tests For File`
 
-Generates unit tests for the current file
+Generates unit tests for the current file using gotests
 
 ### `Go: Generate Unit Tests For Function`
 
-Generates unit tests for the selected function in the current file
+Generates unit tests for the selected function in the current file using gopls
+
+### `Go: Generate Unit Tests For Function (legacy)`
+
+Generates unit tests for the selected function in the current file using gotests
 
 ### `Go: Generate Interface Stubs`
 
@@ -139,9 +143,9 @@ Extract logs in the `gopls (server)` output channel to the editor.
 
 Open the welcome page for the Go extension.
 
-### `Go: Toggle gc details`
+### `Go: Toggle compiler optimization details`
 
-Toggle the display of compiler optimization choices
+Toggle the per-package flag that causes compiler optimization details to be reported as diagnostics
 
 ### `Go: Add Import`
 
@@ -169,11 +173,11 @@ Start the Go language server's maintainer interface (a web server).
 
 ### `Go: Add Tags To Struct Fields`
 
-Add tags configured in go.addTags setting to selected struct using gomodifytags
+Add tags configured in go.addTags setting to selected struct using gomodifytags (via gopls)
 
 ### `Go: Remove Tags From Struct Fields`
 
-Remove tags configured in go.removeTags setting from selected struct using gomodifytags
+Remove tags configured in go.removeTags setting from selected struct using gomodifytags (via gopls)
 
 ### `Go: Show All Commands...`
 

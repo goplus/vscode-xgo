@@ -7,10 +7,9 @@
 import assert from 'assert';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { getGoConfig } from '../../src/config';
 import sinon = require('sinon');
 import { getGoVersion, GoVersion } from '../../src/util';
-import { GOPLS_MAYBE_PROMPT_FOR_TELEMETRY, TELEMETRY_START_TIME_KEY, TelemetryService } from '../../src/goTelemetry';
+import { GOPLS_MAYBE_PROMPT_FOR_TELEMETRY, recordTelemetryStartTime, TelemetryService } from '../../src/goTelemetry';
 import { MockMemento } from '../mocks/MockMemento';
 import { Env } from './goplsTestEnv.utils';
 
@@ -43,12 +42,14 @@ suite('Go Extension Tests With Gopls', function () {
 		const workspaceDir = path.resolve(testdataDir, 'gogetdocTestData');
 		await env.startGopls(path.join(workspaceDir, 'test.go'), undefined, workspaceDir);
 		const { uri } = await env.openDoc(testdataDir, 'gogetdocTestData', 'test.go');
+
+		// TODO(hxjiang): add hover over range test case.
 		const testCases: [string, vscode.Position, string | null, string | null][] = [
 			// [new vscode.Position(3,3), '/usr/local/go/src/fmt'],
 			['keyword', new vscode.Position(0, 3), null, null], // keyword
 			['inside a string', new vscode.Position(23, 14), null, null], // inside a string
 			['just a }', new vscode.Position(20, 0), null, null], // just a }
-			['inside a number', new vscode.Position(28, 16), null, null], // inside a number
+			['inside a number', new vscode.Position(28, 17), null, null], // inside a number
 			['func main()', new vscode.Position(22, 5), 'func main()', null],
 			['import "math"', new vscode.Position(40, 23), 'package math', '`math` on'],
 			[
@@ -159,64 +160,17 @@ suite('Go Extension Tests With Gopls', function () {
 		}
 	});
 
-	async function testCustomFormatter(goConfig: vscode.WorkspaceConfiguration, customFormatter: string) {
-		const config = require('../../src/config');
-		sandbox.stub(config, 'getGoConfig').returns(goConfig);
-		const workspaceDir = path.resolve(testdataDir, 'gogetdocTestData');
-		await env.startGopls(path.join(workspaceDir, 'test.go'), goConfig, workspaceDir);
-		const { doc } = await env.openDoc(testdataDir, 'gogetdocTestData', 'format.go');
-		await vscode.window.showTextDocument(doc);
-
-		const formatFeature = env.languageClient?.getFeature('textDocument/formatting');
-		const formatter = formatFeature?.getProvider(doc);
-		const tokensrc = new vscode.CancellationTokenSource();
-		try {
-			const result = await formatter?.provideDocumentFormattingEdits(
-				doc,
-				{} as vscode.FormattingOptions,
-				tokensrc.token
-			);
-			assert.fail(`formatter unexpectedly succeeded and returned a result: ${JSON.stringify(result)}`);
-		} catch (e) {
-			assert(`${e}`.includes(`errors when formatting with ${customFormatter}`), `${e}`);
-		}
-	}
-
-	test('Nonexistent formatter', async () => {
-		const customFormatter = 'nonexistent';
-		const goConfig = Object.create(getGoConfig(), {
-			formatTool: { value: customFormatter } // this should make the formatter fail.
-		}) as vscode.WorkspaceConfiguration;
-
-		await testCustomFormatter(goConfig, customFormatter);
-	});
-
-	test('Custom formatter', async () => {
-		const customFormatter = 'coolCustomFormatter';
-		const goConfig = Object.create(getGoConfig(), {
-			formatTool: { value: 'custom' }, // this should make the formatter fail.
-			alternateTools: { value: { customFormatter: customFormatter } } // this should make the formatter fail.
-		}) as vscode.WorkspaceConfiguration;
-
-		await testCustomFormatter(goConfig, customFormatter);
-	});
-
 	test('Prompt For telemetry', async () => {
 		const workspaceDir = path.resolve(testdataDir, 'gogetdocTestData');
 		await env.startGopls(path.join(workspaceDir, 'test.go'), undefined, workspaceDir);
 		const memento = new MockMemento();
-		memento.update(TELEMETRY_START_TIME_KEY, new Date('2000-01-01'));
-
+		recordTelemetryStartTime(memento, new Date('2000-01-01'));
 		const sut = new TelemetryService(env.languageClient, memento, [GOPLS_MAYBE_PROMPT_FOR_TELEMETRY]);
 		try {
 			await Promise.all([
 				// we want to see the prompt command flowing.
 				env.onMessageInTrace(GOPLS_MAYBE_PROMPT_FOR_TELEMETRY, 60_000),
-				sut.promptForTelemetry(
-					false /* not a preview */,
-					true /* vscode telemetry not disabled */,
-					1000 /* 1000 out of 1000 users */
-				)
+				sut.promptForTelemetry(true /* vscode telemetry not disabled */)
 			]);
 		} catch (e) {
 			assert(false, `unexpected failure: ${e}`);

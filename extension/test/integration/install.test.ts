@@ -1,4 +1,5 @@
 /* eslint-disable no-async-promise-executor */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*---------------------------------------------------------
  * Copyright (C) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
@@ -7,8 +8,14 @@
 import AdmZip = require('adm-zip');
 import assert from 'assert';
 import * as config from '../../src/config';
-import { inspectGoToolVersion, installTools, maybeInstallImportantTools } from '../../src/goInstallTools';
-import { Tool, getConfiguredTools, getTool, getToolAtVersion } from '../../src/goTools';
+import {
+	IToolsManager,
+	defaultToolsManager,
+	inspectGoToolVersion,
+	installTools,
+	maybeInstallImportantTools
+} from '../../src/goInstallTools';
+import { Tool, getRequiredTools, getTool, getToolAtVersion } from '../../src/goTools';
 import { getBinPath, getGoVersion, GoVersion, rmdirRecursive } from '../../src/util';
 import { correctBinname } from '../../src/utils/pathUtils';
 import cp = require('child_process');
@@ -22,6 +29,8 @@ import vscode = require('vscode');
 import { allToolsInformation } from '../../src/goToolsInformation';
 import * as goInstallTools from '../../src/goInstallTools';
 import * as utilModule from '../../src/util';
+import { getGoConfig } from '../../src/config';
+import { MockWorkspaceConfiguration } from './mocks/configuration';
 
 interface installationTestCase {
 	name: string;
@@ -78,11 +87,16 @@ suite('Installation Tests', function () {
 	// runTest actually executes the logic of the test.
 	// If withLocalProxy is true, the test does not require internet.
 	// If withGOBIN is true, the test will set GOBIN env var.
+	// If withGoVersion is set, the test will run assuming the project requires the version.
+	// If goForInstall is set, the test will use the go version for 'go install'.
+	// If toolsManager is set, goInstallTools will use it instead of the default tools Manager.
 	async function runTest(
 		testCases: installationTestCase[],
 		withLocalProxy?: boolean,
 		withGOBIN?: boolean,
-		withGoVersion?: string
+		withGoVersion?: string,
+		goVersionForInstall?: GoVersion,
+		toolsManager?: goInstallTools.IToolsManager
 	) {
 		const gobin = withLocalProxy && withGOBIN ? path.join(tmpToolsGopath, 'gobin') : undefined;
 
@@ -115,14 +129,19 @@ suite('Installation Tests', function () {
 		}
 
 		const missingTools = testCases.map((tc) => getToolAtVersion(tc.name));
+		const goBinary = getBinPath('go');
 		const goVersion = withGoVersion
 			? /* we want a fake go version, but need the real 'go' binary to run `go install` */
-			  new GoVersion(getBinPath('go'), `go version ${withGoVersion} amd64/linux`)
+			  new GoVersion(goBinary, `go version ${withGoVersion} linux/amd64`)
 			: await getGoVersion();
 
 		sandbox.stub(vscode.commands, 'executeCommand').withArgs('go.languageserver.restart');
+		sandbox
+			.stub(goInstallTools, 'getGoVersionForInstall')
+			.returns(Promise.resolve(goVersionForInstall ?? goVersion));
 
-		const failures = await installTools(missingTools, goVersion);
+		const opts = toolsManager ? { toolsManager } : undefined;
+		const failures = await installTools(missingTools, goVersion, opts);
 		assert(!failures || failures.length === 0, `installTools failed: ${JSON.stringify(failures)}`);
 
 		// Confirm that each expected tool has been installed.
@@ -162,7 +181,12 @@ suite('Installation Tests', function () {
 		}
 	}
 
-	test('Install one tool with a local proxy', async () => {
+	test('Install one tool with a local proxy', async function () {
+		// TODO(golang/vscode-go#3454): reenable the test for old go.
+		const systemGoVersion = await getGoVersion();
+		if (systemGoVersion.lt('1.21')) {
+			this.skip();
+		}
 		await runTest(
 			[
 				{
@@ -175,7 +199,12 @@ suite('Installation Tests', function () {
 		);
 	});
 
-	test('Install multiple tools with a local proxy', async () => {
+	test('Install multiple tools with a local proxy', async function () {
+		// TODO(golang/vscode-go#3454): reenable the test for old go.
+		const systemGoVersion = await getGoVersion();
+		if (systemGoVersion.lt('1.21')) {
+			this.skip();
+		}
 		await runTest(
 			[
 				{ name: 'gopls', versions: ['v0.1.0', 'v1.0.0-pre.1', 'v1.0.0'], wantVersion: 'v1.0.0' },
@@ -185,7 +214,12 @@ suite('Installation Tests', function () {
 		);
 	});
 
-	test('Install multiple tools with a local proxy & GOBIN', async () => {
+	test('Install multiple tools with a local proxy & GOBIN', async function () {
+		// TODO(golang/vscode-go#3454): reenable the test for old go.
+		const systemGoVersion = await getGoVersion();
+		if (systemGoVersion.lt('1.21')) {
+			this.skip();
+		}
 		await runTest(
 			[
 				{ name: 'gopls', versions: ['v0.1.0', 'v1.0.0-pre.1', 'v1.0.0'], wantVersion: 'v1.0.0' },
@@ -197,39 +231,71 @@ suite('Installation Tests', function () {
 	});
 
 	test('Try to install with old go', async () => {
-		const oldGo = new GoVersion(getBinPath('go'), 'go version go1.15 amd64/linux');
+		const oldGo = new GoVersion(getBinPath('go'), 'go version go1.20 amd64/linux');
+		sandbox.stub(goInstallTools, 'getGoVersionForInstall').returns(Promise.resolve(oldGo));
 		const failures = await installTools([getToolAtVersion('gopls')], oldGo);
 		assert(failures?.length === 1 && failures[0].tool.name === 'gopls' && failures[0].reason.includes('or newer'));
 	});
 
-	const gofumptDefault = allToolsInformation['gofumpt'].defaultVersion!;
+	const gofumptDefault = allToolsInformation.get('gofumpt')!.defaultVersion!;
 	test('Install gofumpt with old go', async () => {
 		await runTest(
-			[{ name: 'gofumpt', versions: ['v0.2.1', gofumptDefault], wantVersion: 'v0.2.1' }],
+			[{ name: 'gofumpt', versions: ['v0.5.0', 'v0.6.0', gofumptDefault], wantVersion: 'v0.6.0' }],
 			true, // LOCAL PROXY
 			true, // GOBIN
-			'go1.17' // Go Version
+			'go1.21' // Go Version
+		);
+	});
+	test('Install gofumpt with new go', async () => {
+		await runTest(
+			[{ name: 'gofumpt', versions: ['v0.4.7', 'v0.5.0', gofumptDefault], wantVersion: gofumptDefault }],
+			true, // LOCAL PROXY
+			true, // GOBIN
+			'go1.23.0' // Go Version
 		);
 	});
 
-	test('Install gofumpt with new go', async () => {
+	test('Install a tool, with go for install', async () => {
+		const systemGoVersion = await getGoVersion();
+		const wantGoForInstall = new GoVersion(systemGoVersion.binaryPath, 'go version go1.99.0 linux/amd64');
+		const tm: IToolsManager = {
+			getMissingTools: () => {
+				assert.fail('must not be called');
+			},
+			installTool: (tool, goVersionForInstall, env) => {
+				// Assert the go install command is what we expect.
+				assert.strictEqual(tool.name, 'gopls');
+				assert.strictEqual(goVersionForInstall, wantGoForInstall);
+				assert(env['GOTOOLCHAIN'], `go${systemGoVersion.format()}+auto`);
+				// runTest checks if the tool build succeeds. So, delegate the remaining
+				// build task to the default tools manager's installTool function.
+				return defaultToolsManager.installTool(tool, systemGoVersion, env);
+			}
+		};
 		await runTest(
-			[{ name: 'gofumpt', versions: ['v0.2.1', gofumptDefault], wantVersion: gofumptDefault }],
+			[{ name: 'gopls', versions: ['v0.1.0', 'v1.0.0'], wantVersion: 'v1.0.0' }],
 			true, // LOCAL PROXY
 			true, // GOBIN
-			'go1.18' // Go Version
+			'go' + systemGoVersion.format(true), // Go Version
+			wantGoForInstall, // Go for install
+			tm // stub installTool to
 		);
 	});
+
 	test('Install all tools via GOPROXY', async () => {
 		// Only run this test if we are in CI before a Nightly release.
 		if (!shouldRunSlowTests()) {
 			return;
 		}
 		const goVersion = await getGoVersion();
-		const tools = Object.keys(allToolsInformation).filter((tool) => {
-			const minGoVersion = allToolsInformation[tool].minimumGoVersion;
-			return !minGoVersion || goVersion.gt(minGoVersion.format());
-		});
+
+		const tools: string[] = [];
+		for (const [name, info] of allToolsInformation) {
+			const minGoVersion = info.minimumGoVersion;
+			if (!minGoVersion || goVersion.gt(minGoVersion.format())) {
+				tools.push(name);
+			}
+		}
 		assert(tools.includes('gopls') && tools.includes('dlv'), `selected tools ${JSON.stringify(tools)}`);
 		await runTest(
 			tools.map((tool) => {
@@ -244,7 +310,7 @@ suite('Installation Tests', function () {
 function buildFakeProxy(testCases: installationTestCase[]) {
 	const proxyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'proxydir'));
 	for (const tc of testCases) {
-		const tool = getTool(tc.name);
+		const tool: Tool = getTool(tc.name)!;
 		const module = tool.modulePath;
 		const pathInModule =
 			tool.modulePath === tool.importPath ? '' : tool.importPath.slice(tool.modulePath.length + 1) + '/';
@@ -289,18 +355,47 @@ function shouldRunSlowTests(): boolean {
 	return !!process.env['VSCODEGO_BEFORE_RELEASE_TESTS'];
 }
 
-suite('getConfiguredTools', () => {
-	test('require gopls when using language server', async () => {
-		const configured = getConfiguredTools({ useLanguageServer: true }, {});
-		const got = configured.map((tool) => tool.name) ?? [];
-		assert(got.includes('gopls'), `omitted 'gopls': ${JSON.stringify(got)}`);
-	});
+suite('getRequiredTools', () => {
+	const testCases: {
+		name: string;
+		goConfig: Map<string, any>;
+		expectedTools: string[];
+	}[] = [
+		{
+			name: 'include gopls when {"go.useLanguageServer": true}',
+			goConfig: new Map<string, any>([['useLanguageServer', true]]),
+			// exclude third party tool that is replaced by gopls
+			expectedTools: ['gopls', 'dlv', 'impl', 'goplay']
+		},
+		{
+			name: 'exclude gopls when {"go.useLanguageServer": false}',
+			goConfig: new Map<string, any>([['useLanguageServer', false]]),
+			expectedTools: [
+				'dlv',
+				'impl',
+				'goplay',
+				// include third party tool that is replaced by gopls
+				'gomodifytags',
+				'gotests'
+			]
+		},
+		{
+			name: 'include golangci-lint specified in "go.lintTool"',
+			goConfig: new Map<string, any>([
+				['useLanguageServer', true],
+				['lintTool', 'golangci-lint']
+			]),
+			expectedTools: ['golangci-lint', 'gopls', 'dlv', 'impl', 'goplay']
+		}
+	];
 
-	test('do not require gopls when not using language server', async () => {
-		const configured = getConfiguredTools({ useLanguageServer: false }, {});
-		const got = configured.map((tool) => tool.name) ?? [];
-		assert(!got.includes('gopls'), `suggested 'gopls': ${JSON.stringify(got)}`);
-	});
+	for (const tc of testCases) {
+		test(tc.name, async () => {
+			const configured = getRequiredTools(new MockWorkspaceConfiguration(getGoConfig(), tc.goConfig));
+			const got = configured.map((tool) => tool.name) ?? [];
+			assert.deepStrictEqual(got.sort(), tc.expectedTools.sort());
+		});
+	}
 });
 
 function fakeGoVersion(versionStr: string) {
@@ -314,6 +409,8 @@ suite('listOutdatedTools', () => {
 	});
 	teardown(() => sandbox.restore());
 
+	// goVersion: go toolchain's version
+	// tools: toolname -> go toolchain version used to compile the tool
 	async function runTest(goVersion: string | undefined, tools: { [key: string]: string | undefined }) {
 		const binPathStub = sandbox.stub(utilModule, 'getBinPath');
 		const versionStub = sandbox.stub(goInstallTools, 'inspectGoToolVersion');
@@ -330,53 +427,53 @@ suite('listOutdatedTools', () => {
 	}
 
 	test('minor version difference requires updates', async () => {
-		const x = await runTest('go version go1.18 linux/amd64', {
-			gopls: 'go1.16', // 1.16 < 1.18
-			dlv: 'go1.17', // 1.17 < 1.18
-			staticcheck: 'go1.18', // 1.18 == 1.18
-			gotests: 'go1.19' // 1.19 > 1.18
+		const x = await runTest('go version go1.23.0 linux/amd64', {
+			gopls: 'go1.22.2',
+			dlv: 'go1.21.0',
+			staticcheck: 'go1.23.0',
+			gotests: 'go1.24.1'
 		});
 		assert.deepStrictEqual(x, ['gopls', 'dlv']);
 	});
 	test('patch version difference does not require updates', async () => {
-		const x = await runTest('go version go1.16.1 linux/amd64', {
-			gopls: 'go1.16', // 1.16 < 1.16.1
-			dlv: 'go1.16.1', // 1.16.1 == 1.16.1
-			staticcheck: 'go1.16.2', // 1.16.2 > 1.16.1
-			gotests: 'go1.16rc1' // 1.16rc1 != 1.16.1
+		const x = await runTest('go version go1.23.1 linux/amd64', {
+			gopls: 'go1.23.0', // 1.16 < 1.16.1
+			dlv: 'go1.23.1', // 1.16.1 == 1.16.1
+			staticcheck: 'go1.23.2', // 1.16.2 > 1.16.1
+			gotests: 'go1.23rc1' // go1.23rc1 != go1.23.0
 		});
 		assert.deepStrictEqual(x, ['gotests']);
 	});
-	test('go is beta version', async () => {
-		const x = await runTest('go version go1.18beta2 linux/amd64', {
-			gopls: 'go1.17.1', // 1.17.1 < 1.18beta2
-			dlv: 'go1.18beta1', // 1.18beta1 != 1.18beta2
-			staticcheck: 'go1.18beta2', // 1.18beta2 == 1.18beta2
-			gotests: 'go1.18' // 1.18 > 1.18beta2
+	test('go is rc version', async () => {
+		const x = await runTest('go version go1.23rc2 linux/amd64', {
+			gopls: 'go1.22.3', // go1.22.3 < go1.23rc2
+			dlv: 'go1.23rc1', // go1.23rc1 < go1.23rc2
+			staticcheck: 'go1.23rc2', // same
+			gotests: 'go1.23.0' // go1.23rc2 < go1.23.0
 		});
 		assert.deepStrictEqual(x, ['gopls', 'dlv']);
 	});
-	test('go is dev version', async () => {
-		const x = await runTest('go version devel go1.18-41f485b9a7 linux/amd64', {
-			gopls: 'go1.17.1',
-			dlv: 'go1.18beta1',
-			staticcheck: 'go1.18',
-			gotests: 'go1.19'
+	test('go is dev version - skip version check', async () => {
+		const x = await runTest('go version devel go1.24-41f485b9a7 linux/amd64', {
+			gopls: 'go1.13.1',
+			dlv: 'go1.24rc1',
+			staticcheck: 'go1.23.0',
+			gotests: 'go1.24.0'
 		});
 		assert.deepStrictEqual(x, []);
 	});
-	test('go is unknown version', async () => {
+	test('go is unknown version - skip version check', async () => {
 		const x = await runTest('', {
-			gopls: 'go1.17.1'
+			gopls: 'go1.23.1'
 		});
 		assert.deepStrictEqual(x, []);
 	});
 	test('tools are unknown versions', async () => {
-		const x = await runTest('go version go1.17 linux/amd64', {
+		const x = await runTest('go version go1.22.0 linux/amd64', {
 			gopls: undefined, // this can be because gopls was compiled with go1.18 or it's too old.
-			dlv: 'go1.16.1'
+			dlv: 'go1.20'
 		});
-		assert.deepStrictEqual(x, ['dlv']);
+		assert.deepStrictEqual(x, ['gopls', 'dlv']);
 	});
 });
 
@@ -428,18 +525,18 @@ suite('maybeInstallImportantTools tests', () => {
 
 	test('Successfully install gopls & linter', async () => {
 		await runTest(
-			toolsManagerForTest(),
+			mockToolsManager(['gopls', 'staticcheck']),
 			{}, // emtpry alternateTools.
 			[] // no missing tools after run.
 		);
 	});
 
 	test('Do not install alternate tools', async () => {
-		await runTest(toolsManagerForTest(), { gopls: 'fork.example.com/gopls' }, ['gopls']);
+		await runTest(mockToolsManager(['gopls', 'staticcheck']), { gopls: 'fork.example.com/gopls' }, ['gopls']);
 	});
 
 	test('Recover when installation fails', async () => {
-		const tm = toolsManagerForTest();
+		const tm = mockToolsManager(['gopls', 'staticcheck']);
 		tm.installTool = () => {
 			return Promise.resolve('failed');
 		};
@@ -447,18 +544,29 @@ suite('maybeInstallImportantTools tests', () => {
 	});
 
 	test('Recover when installation crashes', async () => {
-		const tm = toolsManagerForTest();
+		const tm = mockToolsManager(['gopls', 'staticcheck']);
 		tm.installTool = () => {
 			throw new Error('crash');
 		};
 		await runTest(tm, {}, ['gopls', 'staticcheck']);
 	});
 
-	function toolsManagerForTest() {
+	/**
+	 * Creates a mock IToolsManager for testing purposes. Both method can be
+	 * overwritten in test to control the manager behavior.
+	 *
+	 * @param requiredTools An array of tool names that this mock manager
+	 * should treat as its universe of known tools for the test.
+	 * @returns A mock object that implements the IToolsManager interface.
+	 */
+	function mockToolsManager(requiredTools: string[] = []) {
 		const installed: string[] = [];
+
 		const toolsManager: goInstallTools.IToolsManager = {
 			getMissingTools: function (matcher: (tool: Tool) => boolean): Promise<Tool[]> {
-				let tools = getConfiguredTools(config.getGoConfig(), {});
+				let tools: Tool[] = requiredTools.map((t) => {
+					return allToolsInformation.get(t)!;
+				});
 				// apply user's filter;
 				tools = matcher ? tools.filter(matcher) : tools;
 				// remove tools that are installed.
@@ -470,6 +578,7 @@ suite('maybeInstallImportantTools tests', () => {
 				return Promise.resolve(undefined); // no error.
 			}
 		};
+
 		return toolsManager;
 	}
 });

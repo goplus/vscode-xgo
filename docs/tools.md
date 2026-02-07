@@ -2,7 +2,7 @@
 
 This document describes the tools that power the VS Code Go extension.
 
-Tools will be installed by default when you install the extension. You can also manually install or update all of these tools by running the [`Go: Install/Update Tools`](commands.md#go-installupdate-tools) command. The extension uses pinned versions of command-line tools. See the pinned versions in tools information [here](https://github.com/golang/vscode-go/blob/master/src/goToolsInformation.ts). If any tools are missing, you will see an `Analysis Tools Missing` warning in the bottom-right corner of the editor, which will prompt you to install these tools.
+Tools will be installed by default when you install the extension. You can also manually install or update all of these tools by running the [`Go: Install/Update Tools`](commands.md#go-installupdate-tools) command. The extension uses pinned versions of command-line tools. See the pinned versions in tools information [here](https://github.com/golang/vscode-go/blob/master/extension/src/goToolsInformation.ts). If any tools are missing, you will see an `Analysis Tools Missing` warning in the bottom-right corner of the editor, which will prompt you to install these tools.
 
 VS Code Go will install the tools to your `$GOPATH/bin` by default. 
 
@@ -35,7 +35,7 @@ This extension uses Delve for its debug/test functionalities. The extension curr
 
 For a comprehensive overview of how to debug your Go programs, please see the [debugging guide](./debugging.md).
 
-### [`vscgo`](https://pkg.go.dev/github.com/golang/vscode-go/cmd/vscgo)
+### [`vscgo`](https://pkg.go.dev/github.com/golang/vscode-go/vscgo)
 
 This tool provides utilities needed by this extension but do not belong to the language server
 or debug adapter server. Examples include dependency tools management, developer survey
@@ -48,7 +48,9 @@ This tool provides support for the [`Go: Run on Go Playground`](features.md#go-p
 
 ### [`gomodifytags`](https://pkg.go.dev/github.com/fatih/gomodifytags?tab=overview)
 
-This tool provides support for the [`Go: Add Tags to Struct Fields`](features.md#add-or-remove-struct-tags) and [`Go: Remove Tags From Struct Fields`](features.md#add-or-remove-struct-tags) commands.
+This tool provides support for the [`Go: Add Tags to Struct Fields`](features.md#add-or-remove-struct-tags) and [`Go: Remove Tags From Struct Fields`](features.md#add-or-remove-struct-tags) commands when using older versions of gopls. The latest
+version of gopls has a gopls.modify_tags command which directly invokes the
+gomodifytags library.
 
 ### [`impl`](https://github.com/josharian/impl)
 
@@ -64,13 +66,15 @@ This is the default lint tool. See the [full list of checks](https://staticcheck
 Other options include:
 
   * [`golangci-lint`]: This meta-linter combines a number of existing lint tools, including [staticcheck](#staticcheck), into one interface.
+  * [`golangci-lint-v2`]: golangci-lint but v2.
   * [`revive`]: This tool is an enhancement on top of [`golint`], and it provides additional checks.
   * [`golint`]: This used to be the default linter used by this extension before it was officially deprecated.
 
 You can use the [`"go.lintFlags"`](settings.md#go.lintFlags) setting to further configure your linter of choice. Most linters can be configured via special configuration files, but you may still need to pass these command-line flags. The configuration documentation for each supported linter is listed here:
 
 * [`staticcheck`](https://staticcheck.io/docs/#configuration)
-* [`golangci-lint`](https://golangci-lint.run/usage/configuration/)
+* [`golangci-lint`](https://golangci.github.io/legacy-v1-doc/usage/configuration/)
+* [`golangci-lint-v2`](https://golangci-lint.run/docs/configuration/cli/)
 * [`revive`](https://github.com/mgechev/revive#command-line-flags)
 
 #### Examples
@@ -94,7 +98,8 @@ Configure `revive` to exclude `vendor` directories and apply extra configuration
 [`gofmt`]: https://golang.org/cmd/gofmt/
 [`golint`]: https://pkg.go.dev/golang.org/x/lint/golint?tab=overview
 [`staticcheck`]: https://pkg.go.dev/honnef.co/go/tools/staticcheck?tab=overview
-[`golangci-lint`]: https://golangci-lint.run/
+[`golangci-lint`]: https://golangci.github.io/legacy-v1-doc/
+[`golangci-lint-v2`]: https://golangci-lint.run/
 [`revive`]: https://pkg.go.dev/github.com/mgechev/revive?tab=overview
 [`gopls`]: https://golang.org/s/gopls
 [`go`]: https://golang.org/cmd/go

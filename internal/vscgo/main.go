@@ -1,4 +1,4 @@
-// Copyright 2023 The Go Authors. All rights reserved.
+// Copyright 2024 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -42,6 +42,18 @@ func init() {
 			usage: "inc_counters",
 			short: "increment telemetry counters",
 			run:   runIncCounters,
+		},
+		{
+			usage:   "dump-pprof <profile>",
+			short:   "convert a pprof profile to a JSON file",
+			hasArgs: true,
+			run:     runPprofDump,
+		},
+		{
+			usage:   "serve-pprof <addr> <profile>",
+			short:   "serve a pprof profile",
+			hasArgs: true,
+			run:     runPprofServe,
 		},
 		{
 			usage: "version",
@@ -152,33 +164,32 @@ func help(name string) {
 }
 
 // runIncCounters increments telemetry counters read from stdin.
-func runIncCounters(_ []string) error {
+// Write the counters to file provided by env var TELEMETRY_COUNTER_FILE.
+func runIncCounters(_ []string) (rerr error) {
 	scanner := bufio.NewScanner(os.Stdin)
-	if counterFile := os.Getenv("TELEMETRY_COUNTER_FILE"); counterFile != "" {
-		return printCounter(counterFile, scanner)
-	}
-	return runIncCountersImpl(scanner, counter.Add)
-}
 
-func printCounter(fname string, scanner *bufio.Scanner) (rerr error) {
-	f, err := os.OpenFile(fname, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := f.Close(); rerr == nil {
-			rerr = err
+	if counterFile := os.Getenv("TELEMETRY_COUNTER_FILE"); counterFile != "" {
+		f, err := os.OpenFile(counterFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			return err
 		}
-	}()
-	return runIncCountersImpl(scanner, func(name string, count int64) {
-		fmt.Fprintln(f, name, count)
-	})
+		defer func() {
+			if err := f.Close(); err == nil {
+				rerr = err
+			}
+		}()
+		return runIncCountersImpl(scanner, func(name string, count int64) { fmt.Fprintln(f, name, count) })
+	} else {
+		return runIncCountersImpl(scanner, counter.Add)
+	}
 }
 
 const (
 	incCountersBadInput = "inc_counters_bad_input"
 )
 
+// incCountersInputLength returns the counter name based on input counters
+// length.
 func incCountersInputLength(n int) string {
 	const name = "inc_counters_num_input"
 	for i := 1; i < 8; i *= 2 {
@@ -189,6 +200,7 @@ func incCountersInputLength(n int) string {
 	return name + ":>=8"
 }
 
+// incCountersDuration returns the counter name based on input duration.
 func incCountersDuration(duration time.Duration) string {
 	const name = "inc_counters_duration"
 	switch {
@@ -221,7 +233,9 @@ func runIncCountersImpl(scanner *bufio.Scanner, incCounter func(name string, cou
 		linenum++
 		incCounter(name, int64(count))
 	}
+	// Keep track of counter line number.
 	incCounter(incCountersInputLength(linenum), 1)
+	// Keep track of time consumed for each round of counter increment.
 	incCounter(incCountersDuration(time.Since(start)), 1)
 	return nil
 }

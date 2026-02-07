@@ -10,8 +10,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"maps"
 	"os"
 	"os/exec"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -47,7 +49,7 @@ func Generate(inputFile string, skipCleanup bool) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	b, err := asVSCodeSettings(options)
+	b, err := asVSCodeSettingsJSON(options)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +68,7 @@ func Generate(inputFile string, skipCleanup bool) ([]byte, error) {
 }
 
 // readGoplsAPI returns the output of `gopls api-json`.
-func readGoplsAPI() (*APIJSON, error) {
+func readGoplsAPI() (*API, error) {
 	version, err := exec.Command("gopls", "-v", "version").Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to check gopls version: %v", err)
@@ -78,7 +80,7 @@ func readGoplsAPI() (*APIJSON, error) {
 		return nil, fmt.Errorf("failed to run gopls: %v", err)
 	}
 
-	api := &APIJSON{}
+	api := &API{}
 	if err := json.Unmarshal(out, api); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal: %v", err)
 	}
@@ -87,37 +89,48 @@ func readGoplsAPI() (*APIJSON, error) {
 
 // extractOptions extracts the options from APIJSON.
 // It may rearrange the ordering and documentation for better presentation.
-func extractOptions(api *APIJSON) ([]*OptionJSON, error) {
+func extractOptions(api *API) ([]*Option, error) {
 	type sortableOptionJSON struct {
-		*OptionJSON
+		*Option
 		section string
 	}
 	options := []sortableOptionJSON{}
 	for k, v := range api.Options {
 		for _, o := range v {
-			options = append(options, sortableOptionJSON{OptionJSON: o, section: k})
+			options = append(options, sortableOptionJSON{Option: o, section: k})
 		}
 	}
 	sort.SliceStable(options, func(i, j int) bool {
-		pi := priority(options[i].OptionJSON)
-		pj := priority(options[j].OptionJSON)
+		pi := priority(options[i].Option)
+		pj := priority(options[j].Option)
 		if pi == pj {
 			return options[i].Name < options[j].Name
 		}
 		return pi < pj
 	})
 
-	opts := []*OptionJSON{}
+	opts := []*Option{}
 	for _, v := range options {
-		if name := statusName(v.OptionJSON); name != "" {
-			v.OptionJSON.Doc = name + " " + v.OptionJSON.Doc
+		if name := statusName(v.Option.Status); name != "" {
+			v.Option.Doc = name + " " + v.Option.Doc
 		}
-		opts = append(opts, v.OptionJSON)
+		// Enum keys or values can be marked with status individually.
+		for i, key := range v.EnumKeys.Keys {
+			if name := statusName(key.Status); name != "" {
+				v.EnumKeys.Keys[i].Doc = name + " " + key.Doc
+			}
+		}
+		for i, value := range v.EnumValues {
+			if name := statusName(value.Status); name != "" {
+				v.EnumValues[i].Doc = name + " " + value.Doc
+			}
+		}
+		opts = append(opts, v.Option)
 	}
 	return opts, nil
 }
 
-func priority(opt *OptionJSON) int {
+func priority(opt *Option) int {
 	switch toStatus(opt.Status) {
 	case Experimental:
 		return 10
@@ -127,8 +140,8 @@ func priority(opt *OptionJSON) int {
 	return 1000
 }
 
-func statusName(opt *OptionJSON) string {
-	switch toStatus(opt.Status) {
+func statusName(s string) string {
+	switch toStatus(s) {
 	case Experimental:
 		return "(Experimental)"
 	case Advanced:
@@ -169,10 +182,18 @@ func rewritePackageJSON(newSettings, inFile string) ([]byte, error) {
 	return bytes.TrimSpace(stdout.Bytes()), nil
 }
 
-// asVSCodeSettings converts the given options to match the VS Code settings
+// asVSCodeSettingsJSON converts the given options to match the VS Code settings
 // format.
-func asVSCodeSettings(options []*OptionJSON) ([]byte, error) {
-	seen := map[string][]*OptionJSON{}
+func asVSCodeSettingsJSON(options []*Option) ([]byte, error) {
+	obj, err := asVSCodeSettings(options)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(obj)
+}
+
+func asVSCodeSettings(options []*Option) (map[string]*Object, error) {
+	seen := map[string][]*Option{}
 	for _, opt := range options {
 		seen[opt.Hierarchy] = append(seen[opt.Hierarchy], opt)
 	}
@@ -192,10 +213,10 @@ func asVSCodeSettings(options []*OptionJSON) ([]byte, error) {
 		AdditionalProperties: false,
 		Properties:           goplsProperties,
 	}
-	return json.Marshal(goProperties)
+	return goProperties, nil
 }
 
-func collectProperties(m map[string][]*OptionJSON) (goplsProperties, goProperties map[string]*Object, err error) {
+func collectProperties(m map[string][]*Option) (goplsProperties, goProperties map[string]*Object, err error) {
 	var sorted []string
 	var containsEmpty bool
 	for k := range m {
@@ -248,7 +269,7 @@ func collectProperties(m map[string][]*OptionJSON) (goplsProperties, goPropertie
 	return goplsProperties, goProperties, nil
 }
 
-func toObject(opt *OptionJSON) (*Object, error) {
+func toObject(opt *Option) (*Object, error) {
 	doc := opt.Doc
 	if mappedTo, ok := associatedToExtensionProperties[opt.Name]; ok {
 		doc = fmt.Sprintf("%v\nIf unspecified, values of `%v` will be propagated.\n", doc, strings.Join(mappedTo, ", "))
@@ -259,20 +280,40 @@ func toObject(opt *OptionJSON) (*Object, error) {
 		Scope: "resource",
 		// TODO: consider 'additionalProperties' if gopls api-json
 		// outputs acceptable properties.
-		// TODO: deprecation attribute
+		DeprecationMessage: opt.DeprecationMessage,
 	}
-	// Handle any enum types.
-	if opt.Type == "enum" {
+	if opt.Type != "enum" {
+		obj.Type = propertyType(opt.Type)
+	} else { // Map enum type to a sum type.
+		// Assume value type is bool | string.
+		seenTypes := map[string]bool{}
 		for _, v := range opt.EnumValues {
-			unquotedName, err := strconv.Unquote(v.Value)
-			if err != nil {
-				return nil, err
+			// EnumValue.Value: string in JSON syntax (quoted)
+			var x any
+			if err := json.Unmarshal([]byte(v.Value), &x); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal %q: %v", v.Value, err)
 			}
-			obj.Enum = append(obj.Enum, unquotedName)
+
+			switch t := x.(type) {
+			case string:
+				obj.Enum = append(obj.Enum, t)
+				seenTypes["string"] = true
+			case bool:
+				obj.Enum = append(obj.Enum, t)
+				seenTypes["bool"] = true
+			default:
+				panic(fmt.Sprintf("type %T %+v as enum value type is not supported", t, t))
+			}
 			obj.MarkdownEnumDescriptions = append(obj.MarkdownEnumDescriptions, v.Doc)
 		}
+		obj.Type = propertyType(slices.Sorted(maps.Keys(seenTypes))...)
 	}
-	// Handle any objects whose keys are enums.
+	// Handle objects whose keys are listed in EnumKeys.
+	// Gopls uses either enum or string as key types, for example,
+	//   map[string]bool: analyses
+	//   map[enum]bool: codelenses, annotations
+	// Both cases where 'enum' is used as a key type actually use
+	// only string type enum. For simplicity, map all to string-keyed objects.
 	if len(opt.EnumKeys.Keys) > 0 {
 		if obj.Properties == nil {
 			obj.Properties = map[string]*Object{}
@@ -289,13 +330,12 @@ func toObject(opt *OptionJSON) (*Object, error) {
 			}
 		}
 	}
-	obj.Type = propertyType(opt.Type)
 	obj.Default = formatOptionDefault(opt)
 
 	return obj, nil
 }
 
-func formatOptionDefault(opt *OptionJSON) interface{} {
+func formatOptionDefault(opt *Option) interface{} {
 	// Each key will have its own default value, instead of one large global
 	// one. (Alternatively, we can build the default from the keys.)
 	if len(opt.EnumKeys.Keys) > 0 {
@@ -337,44 +377,51 @@ var associatedToExtensionProperties = map[string][]string{
 	"buildFlags": {"go.buildFlags", "go.buildTags"},
 }
 
-func propertyType(t string) string {
+func propertyType(typs ...string) any /* string or []string */ {
+	if len(typs) == 0 {
+		panic("unexpected: len(typs) == 0")
+	}
+	if len(typs) == 1 {
+		return mapType(typs[0])
+	}
+
+	var ret []string
+	for _, t := range typs {
+		ret = append(ret, mapType(t))
+	}
+	return ret
+}
+
+func mapType(t string) string {
 	switch t {
 	case "string":
 		return "string"
 	case "bool":
 		return "boolean"
-	case "enum":
-		return "string"
 	case "time.Duration":
 		return "string"
 	case "[]string":
 		return "array"
-	case "map[string]string", "map[string]bool":
+	case "map[string]string", "map[string]bool", "map[enum]string", "map[enum]bool":
 		return "object"
+	case "any":
+		return "boolean"
 	}
 	log.Fatalf("unknown type %q", t)
 	return ""
 }
 
-func check(err error) {
-	if err == nil {
-		return
-	}
-
-	log.Output(1, err.Error())
-	os.Exit(1)
-}
-
 // Object represents a VS Code settings object.
 type Object struct {
-	Type                     string             `json:"type,omitempty"`
+	Type                     any                `json:"type,omitempty"` // string | []string
 	MarkdownDescription      string             `json:"markdownDescription,omitempty"`
 	AdditionalProperties     bool               `json:"additionalProperties,omitempty"`
-	Enum                     []string           `json:"enum,omitempty"`
+	Enum                     []any              `json:"enum,omitempty"`
 	MarkdownEnumDescriptions []string           `json:"markdownEnumDescriptions,omitempty"`
 	Default                  interface{}        `json:"default,omitempty"`
 	Scope                    string             `json:"scope,omitempty"`
 	Properties               map[string]*Object `json:"properties,omitempty"`
+	DeprecationMessage       string             `json:"deprecationMessage,omitempty"`
 }
 
 type Status int
@@ -386,24 +433,26 @@ const (
 	None
 )
 
-// APIJSON is the output json type of `gopls api-json`.
-// Types copied from golang.org/x/tools/internal/lsp/source/options.go.
-type APIJSON struct {
-	Options   map[string][]*OptionJSON
-	Commands  []*CommandJSON
-	Lenses    []*LensJSON
-	Analyzers []*AnalyzerJSON
+// API is a JSON-encodable representation of gopls' public interfaces.
+//
+// Types are copied from golang.org/x/tools/gopls/internal/doc/api.go.
+type API struct {
+	Options   map[string][]*Option
+	Lenses    []*Lens
+	Analyzers []*Analyzer
+	Hints     []*Hint
 }
 
-type OptionJSON struct {
-	Name       string
-	Type       string
-	Doc        string
-	EnumKeys   EnumKeys
-	EnumValues []EnumValue
-	Default    string
-	Status     string
-	Hierarchy  string
+type Option struct {
+	Name               string
+	Type               string // T = bool | string | int | enum | any | []T | map[T]T | time.Duration
+	Doc                string
+	EnumKeys           EnumKeys
+	EnumValues         []EnumValue
+	Default            string
+	Status             string
+	Hierarchy          string
+	DeprecationMessage string
 }
 
 type EnumKeys struct {
@@ -412,30 +461,37 @@ type EnumKeys struct {
 }
 
 type EnumKey struct {
-	Name    string
+	Name    string // in JSON syntax (quoted)
 	Doc     string
 	Default string
+	Status  string // = "" | "advanced" | "experimental" | "deprecated"
 }
 
 type EnumValue struct {
-	Value string
-	Doc   string
+	Value  string // in JSON syntax (quoted)
+	Doc    string // doc comment; always starts with `Value`
+	Status string // = "" | "advanced" | "experimental" | "deprecated"
 }
 
-type CommandJSON struct {
-	Command string
-	Title   string
-	Doc     string
+type Lens struct {
+	FileType string // e.g. "Go", "go.mod"
+	Lens     string
+	Title    string
+	Doc      string
+	Default  bool
+	Status   string // = "" | "advanced" | "experimental" | "deprecated"
 }
 
-type LensJSON struct {
-	Lens  string
-	Title string
-	Doc   string
+type Analyzer struct {
+	Name    string
+	Doc     string // from analysis.Analyzer.Doc ("title: summary\ndescription"; not Markdown)
+	URL     string
+	Default bool
 }
 
-type AnalyzerJSON struct {
+type Hint struct {
 	Name    string
 	Doc     string
 	Default bool
+	Status  string // = "" | "advanced" | "experimental" | "deprecated"
 }

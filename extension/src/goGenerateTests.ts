@@ -19,8 +19,12 @@ import { outputChannel } from './goStatus';
 import { getBinPath, resolvePath } from './util';
 import { CommandFactory } from './commands';
 import { GoExtensionContext } from './context';
+import { TelemetryKey, telemetryReporter } from './goTelemetry';
+import { getFromGlobalState, updateGlobalState } from './stateUtils';
 
 const generatedWord = 'Generated ';
+
+export const COMMAND = 'gopls.add_test';
 
 /**
  * If current active editor has a Go file, returns the editor.
@@ -71,7 +75,13 @@ export const toggleTestFile: CommandFactory = () => () => {
 	vscode.commands.executeCommand('vscode.open', vscode.Uri.file(targetFilePath));
 };
 
-export const generateTestCurrentPackage: CommandFactory = (ctx, goCtx) => () => {
+export const generateTestCurrentPackage: CommandFactory = (ctx, goCtx) => (uri: vscode.Uri) => {
+	if (uri) {
+		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOTESTS_CONTEXT_MENU, 1);
+	} else {
+		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOTESTS_COMMAND_PALETTE, 1);
+	}
+
 	const editor = checkActiveEditor();
 	if (!editor) {
 		return false;
@@ -87,7 +97,13 @@ export const generateTestCurrentPackage: CommandFactory = (ctx, goCtx) => () => 
 	);
 };
 
-export const generateTestCurrentFile: CommandFactory = (ctx, goCtx) => () => {
+export const generateTestCurrentFile: CommandFactory = (ctx, goCtx) => (uri: vscode.Uri) => {
+	if (uri) {
+		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOTESTS_CONTEXT_MENU, 1);
+	} else {
+		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOTESTS_COMMAND_PALETTE, 1);
+	}
+
 	const editor = checkActiveEditor();
 	if (!editor) {
 		return false;
@@ -104,7 +120,42 @@ export const generateTestCurrentFile: CommandFactory = (ctx, goCtx) => () => {
 	);
 };
 
-export const generateTestCurrentFunction: CommandFactory = (ctx, goCtx) => async () => {
+/**
+ * Generates a test for the selected function using 'gopls.add_test'.
+ */
+export const goplsGenerateTest: CommandFactory = (_, goCtx) => async (uri: vscode.Uri) => {
+	// When invoked from command palette, the input uri is undefined.
+	// When invoked from an editor, the URI of the document is passed in to the
+	// function.
+	// https://code.visualstudio.com/api/references/contribution-points#contributes.menus
+	if (uri) {
+		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_ADD_TEST_CONTEXT_MENU, 1);
+	} else {
+		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOPLS_ADD_TEST_COMMAND_PALETTE, 1);
+	}
+	if (!goCtx.serverInfo?.Commands?.includes(COMMAND)) {
+		vscode.window.showWarningMessage(`Please upgrade gopls to use the '${COMMAND}' command`);
+		return;
+	}
+
+	const editor = checkActiveEditor();
+	if (!editor) {
+		return;
+	}
+
+	await vscode.commands.executeCommand(COMMAND, {
+		URI: editor.document.uri.toString(),
+		range: editor.selection
+	});
+};
+
+export const generateTestCurrentFunction: CommandFactory = (ctx, goCtx) => async (uri: vscode.Uri) => {
+	if (uri) {
+		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOTESTS_CONTEXT_MENU, 1);
+	} else {
+		telemetryReporter.add(TelemetryKey.COMMAND_TRIGGER_GOTESTS_COMMAND_PALETTE, 1);
+	}
+
 	const editor = checkActiveEditor();
 	if (!editor) {
 		return false;
@@ -158,6 +209,43 @@ interface Config {
 	isTestFile?: boolean;
 }
 
+/**
+ * THIRD_PARTY_TOOL_SUGGESTION_PREFIX_KEY is the prefix of key storing whether
+ * we have suggested user to provide feedbacks about gopls's source code actions.
+ */
+export const THIRD_PARTY_TOOL_SUGGESTION_PREFIX_KEY = 'third-party-tool-suggested-';
+
+export async function promptForFeedback(tool: string) {
+	let command: string;
+	if (tool === 'gotests') {
+		command = 'add_test';
+	} else if (tool === 'gomodifytags') {
+		command = 'modify_tags';
+	} else {
+		return;
+	}
+
+	const suggested: Boolean = getFromGlobalState(THIRD_PARTY_TOOL_SUGGESTION_PREFIX_KEY + tool, false);
+	if (suggested) {
+		return;
+	}
+	updateGlobalState(THIRD_PARTY_TOOL_SUGGESTION_PREFIX_KEY + tool, true);
+
+	const message = `It looks like you are using legacy tool "${tool}". Do you know gopls offers the same functionality builtin to gopls through the context menu, the command palette, or source code actions? Would you be willing to tell us why you choose the legacy tools, so that we can improve gopls?`;
+
+	const selected = await vscode.window.showWarningMessage(message, 'Yes', 'No');
+
+	if (selected === undefined || selected === 'No') {
+		return;
+	}
+
+	await vscode.env.openExternal(
+		vscode.Uri.parse(
+			`https://github.com/golang/go/issues/new?title=x%2Ftools%2Fgopls%3A+${command}+source+code+action+feedback&labels=tools,gopls`
+		)
+	);
+}
+
 function generateTests(
 	ctx: vscode.ExtensionContext,
 	goCtx: GoExtensionContext,
@@ -165,6 +253,12 @@ function generateTests(
 	goConfig: vscode.WorkspaceConfiguration
 ): Promise<boolean> {
 	return new Promise<boolean>((resolve, reject) => {
+		telemetryReporter.add(TelemetryKey.TOOL_USAGE_GOTESTS, 1);
+
+		if (goConfig.get('useLanguageServer') === 'true') {
+			promptForFeedback('gotests');
+		}
+
 		const cmd = getBinPath('gotests');
 		let args = ['-w'];
 		const goGenerateTestsFlags: string[] = goConfig['generateTestsFlags'] || [];
@@ -194,7 +288,7 @@ function generateTests(
 		}
 
 		cp.execFile(cmd, args, { env: toolExecutionEnvironment() }, (err, stdout, stderr) => {
-			outputChannel.appendLine('Generating Tests: ' + cmd + ' ' + args.join(' '));
+			outputChannel.info('Generating Tests: ' + cmd + ' ' + args.join(' '));
 
 			try {
 				if (err && (<any>err).code === 'ENOENT') {
@@ -224,7 +318,7 @@ function generateTests(
 				}
 
 				vscode.window.showInformationMessage(message);
-				outputChannel.append(message);
+				outputChannel.info(message);
 
 				if (testsGenerated && !conf.isTestFile) {
 					toggleTestFile(ctx, goCtx)();
@@ -233,7 +327,7 @@ function generateTests(
 				return resolve(true);
 			} catch (e) {
 				vscode.window.showInformationMessage((e as any).msg);
-				outputChannel.append((e as any).msg);
+				outputChannel.info((e as any).msg);
 				reject(e);
 			}
 		});

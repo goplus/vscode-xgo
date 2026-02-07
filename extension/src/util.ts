@@ -159,8 +159,12 @@ export function parseFilePrelude(text: string): Prelude {
  * Gets version of Go based on the output of the command `go version`.
  * Throws if go version can't be determined because go is not available
  * or `go version` fails.
+ * If GOTOOLCHAIN is provided, it will be used to set GOTOOLCHAIN env var.
+ * For example, getGoVersion(binPath, 'local') can be used to query
+ * the local toolchain's go version regardless of the go version specified
+ * in the workspace go.mod or go.work.
  */
-export async function getGoVersion(goBinPath?: string): Promise<GoVersion> {
+export async function getGoVersion(goBinPath?: string, GOTOOLCHAIN?: string): Promise<GoVersion> {
 	// TODO(hyangah): limit the number of concurrent getGoVersion call.
 	// When the extension starts, at least 4 concurrent calls race
 	// and end up calling `go version`.
@@ -168,7 +172,7 @@ export async function getGoVersion(goBinPath?: string): Promise<GoVersion> {
 	const goRuntimePath = goBinPath ?? getBinPath('go');
 
 	const error = (msg: string) => {
-		outputChannel.appendLine(msg);
+		outputChannel.info(msg);
 		console.warn(msg);
 		return new Error(msg);
 	};
@@ -176,7 +180,7 @@ export async function getGoVersion(goBinPath?: string): Promise<GoVersion> {
 	if (!goRuntimePath) {
 		throw error(`unable to locate "go" binary in GOROOT (${getCurrentGoRoot()}) or PATH (${getEnvPath()})`);
 	}
-	if (cachedGoBinPath === goRuntimePath && cachedGoVersion) {
+	if (GOTOOLCHAIN === undefined && cachedGoBinPath === goRuntimePath && cachedGoVersion) {
 		if (cachedGoVersion.isValid()) {
 			return Promise.resolve(cachedGoVersion);
 		}
@@ -189,6 +193,9 @@ export async function getGoVersion(goBinPath?: string): Promise<GoVersion> {
 	let goVersion: GoVersion | undefined;
 	try {
 		const env = toolExecutionEnvironment();
+		if (GOTOOLCHAIN !== undefined) {
+			env['GOTOOLCHAIN'] = GOTOOLCHAIN;
+		}
 		const execFile = util.promisify(cp.execFile);
 		const { stdout, stderr } = await execFile(goRuntimePath, ['version'], { env, cwd });
 		if (stderr) {
@@ -198,8 +205,8 @@ export async function getGoVersion(goBinPath?: string): Promise<GoVersion> {
 	} catch (err) {
 		throw error(`failed to run "${goRuntimePath} version": ${err} cwd: ${cwd}`);
 	}
-	if (!goBinPath) {
-		// if getGoVersion was called with a given goBinPath, don't cache the result.
+	if (!goBinPath && GOTOOLCHAIN === undefined) {
+		// if getGoVersion was called with a given goBinPath or an explicit GOTOOLCHAIN env var, don't cache the result.
 		cachedGoBinPath = goRuntimePath;
 		cachedGoVersion = goVersion;
 		if (!cachedGoVersion.isValid()) {
@@ -538,7 +545,7 @@ export function runTool(
 					return resolve([]);
 				}
 				const lines = (useStdErr ? stderr : stdout).toString().split('\n');
-				outputChannel.appendLine([cwd + '>Finished running tool:', cmd, ...args].join(' '));
+				outputChannel.info([cwd + '>Finished running tool:', cmd, ...args].join(' '));
 
 				const ret: ICheckResult[] = [];
 				let unexpectedOutput = false;
@@ -572,7 +579,7 @@ export function runTool(
 
 					const filePath = path.resolve(cwd, file);
 					ret.push({ file: filePath, line, col, msg, severity });
-					outputChannel.appendLine(`${filePath}:${line}:${col ?? ''} ${msg}`);
+					outputChannel.info(`${filePath}:${line}:${col ?? ''} ${msg}`);
 				}
 				if (!atLeastSingleMatch && unexpectedOutput && vscode.window.activeTextEditor) {
 					outputChannel.error(stderr);
@@ -586,7 +593,7 @@ export function runTool(
 						});
 					}
 				}
-				outputChannel.appendLine('');
+				outputChannel.info('');
 				resolve(ret);
 			} catch (e) {
 				reject(e);

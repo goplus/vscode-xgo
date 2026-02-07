@@ -235,10 +235,9 @@ func main() {
 	// Check for the latest gopls version.
 	versions, err := listAllModuleVersions("golang.org/x/tools/gopls")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to list all module version: %v", err)
 	}
 	latestIndex := len(versions.Versions) - 1
-	latestPre := versions.Versions[latestIndex]
 	// We need to find the last version that was not a pre-release.
 	var latest string
 	for ; latestIndex >= 0; latestIndex-- {
@@ -250,11 +249,7 @@ func main() {
 
 	goplsVersion, err := listModuleVersion(fmt.Sprintf("golang.org/x/tools/gopls@%s", latest))
 	if err != nil {
-		log.Fatal(err)
-	}
-	goplsVersionPre, err := listModuleVersion(fmt.Sprintf("golang.org/x/tools/gopls@%s", latestPre))
-	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to list gopls latest version: %v", err)
 	}
 
 	allToolsFile := filepath.Join(dir, "tools", "allTools.ts.in")
@@ -266,7 +261,7 @@ func main() {
 	}
 
 	// TODO(suzmue): change input to json and avoid magic string printing.
-	toolsString := fmt.Sprintf(string(data), goplsVersion.Version, goplsVersion.Time[:len("YYYY-MM-DD")], goplsVersionPre.Version, goplsVersionPre.Time[:len("YYYY-MM-DD")])
+	toolsString := fmt.Sprintf(string(data), goplsVersion.Version, goplsVersion.Time[:len("YYYY-MM-DD")])
 
 	// Write tools section.
 	b.WriteString(toolsString)
@@ -274,7 +269,9 @@ func main() {
 }
 
 func listModuleVersion(path string) (moduleVersion, error) {
-	output, err := exec.Command("go", "list", "-m", "-json", path).Output()
+	cmd := exec.Command("go", "list", "-m", "-json", path)
+	cmd.Stderr = os.Stderr
+	output, err := cmd.Output()
 	if err != nil {
 		return moduleVersion{}, err
 	}
@@ -287,7 +284,9 @@ func listModuleVersion(path string) (moduleVersion, error) {
 }
 
 func listAllModuleVersions(path string) (moduleVersion, error) {
-	output, err := exec.Command("go", "list", "-m", "-json", "-versions", path).Output()
+	cmd := exec.Command("go", "list", "-m", "-json", "-versions", path)
+	cmd.Stderr = os.Stderr
+	output, err := cmd.Output()
 	if err != nil {
 		return moduleVersion{}, err
 	}
@@ -491,9 +490,18 @@ func enumDescriptionsSnippet(p *Property) string {
 	if hasDesc && len(desc) == len(p.Enum) {
 		b.WriteString("\n\n")
 		for i, e := range p.Enum {
-			fmt.Fprintf(b, "* `%v`", e)
-			if d := desc[i]; d != "" {
-				fmt.Fprintf(b, ": %v", strings.TrimRight(strings.ReplaceAll(d, "\n\n", "<br/>"), "\n"))
+			enumName := fmt.Sprintf("`%v`", e)
+			if d := desc[i]; d == "" {
+				fmt.Fprintf(b, "* %v", enumName)
+			} else {
+				enumDesc := strings.TrimRight(strings.ReplaceAll(d, "\n\n", "<br/>"), "\n")
+				if strings.HasPrefix(d, enumName+":") {
+					// gopls's enum descriptions are sometimes already formatted
+					// like `name: description` format. Remove the duplicate prefix.
+					fmt.Fprintf(b, "* %v", enumDesc)
+				} else {
+					fmt.Fprintf(b, "* %v: %v", enumName, enumDesc)
+				}
 			}
 			b.WriteString("\n")
 		}
@@ -640,7 +648,7 @@ func describeDebugProperty(p *Property) string {
 	if p.MarkdownDescription != "" {
 		desc = p.MarkdownDescription
 	}
-	if p == nil || strings.Contains(desc, "Not applicable when using `dlv-dap` mode.") {
+	if strings.Contains(desc, "Not applicable when using `dlv-dap` mode.") {
 		return ""
 	}
 

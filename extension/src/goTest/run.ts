@@ -21,7 +21,7 @@ import vscode = require('vscode');
 import { outputChannel } from '../goStatus';
 import { isModSupported } from '../goModules';
 import { getGoConfig } from '../config';
-import { getBenchmarkFunctions, getTestFlags, getTestFunctions, goTest, GoTestOutput } from '../testUtils';
+import { getTestFlags, getTestFunctionsAndTestSuite, goTest, GoTestOutput } from '../testUtils';
 import { GoTestResolver } from './resolve';
 import { dispose, forEachAsync, GoTest, Workspace } from './utils';
 import { GoTestProfiler, ProfilingOptions } from './profile';
@@ -161,8 +161,11 @@ export class GoTestRunner {
 		await doc.save();
 
 		const goConfig = getGoConfig(test.uri);
-		const getFunctions = kind === 'benchmark' ? getBenchmarkFunctions : getTestFunctions;
-		const testFunctions = await getFunctions(this.goCtx, doc, token);
+		const { testFunctions, suiteToTest } = await getTestFunctionsAndTestSuite(
+			kind === 'benchmark',
+			this.goCtx,
+			doc
+		);
 
 		// TODO Can we get output from the debug session, in order to check for
 		// run/pass/fail events?
@@ -191,7 +194,8 @@ export class GoTestRunner {
 
 		const run = this.ctrl.createTestRun(request, `Debug ${name}`);
 		if (!testFunctions) return;
-		const started = await debugTestAtCursor(doc, escapeSubTestName(name), testFunctions, goConfig, id);
+		const started = await debugTestAtCursor(doc, escapeSubTestName(name), testFunctions, suiteToTest, goConfig, id);
+
 		if (!started) {
 			subs.forEach((s) => s.dispose());
 			run.end();
@@ -243,7 +247,9 @@ export class GoTestRunner {
 		// Save all documents that contain a test we're about to run, to ensure `go
 		// test` has the latest changes
 		const fileUris = new Set(Array.from(files).map((x) => x.uri));
-		await Promise.all(this.workspace.textDocuments.filter((x) => fileUris.has(x.uri)).map((x) => x.save()));
+		await Promise.all(
+			this.workspace.textDocuments.filter((x) => fileUris.has(x.uri) && x.isDirty).map((x) => x.save())
+		);
 
 		let hasBench = false,
 			hasNonBench = false;
@@ -338,7 +344,7 @@ export class GoTestRunner {
 				);
 				Object.keys(tests)
 					.concat(Object.keys(benchmarks))
-					.forEach((x) => outputChannel.appendLine(x));
+					.forEach((x) => outputChannel.info(x));
 				outputChannel.show();
 				vscode.window.showErrorMessage(
 					`Cannot run the selected tests in package ${pkg.label} - see the Go output panel for details`

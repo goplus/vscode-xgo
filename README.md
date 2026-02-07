@@ -10,8 +10,8 @@ provides rich language support for the
 
 ## Requirements
 
-* Visual Studio Code 1.75 or newer (or editors compatible with VS Code 1.75+ APIs)
-* Go 1.18 or newer
+* Visual Studio Code 1.90 or newer (or editors compatible with VS Code 1.90+ APIs)
+* Go 1.21 or newer.
 
 ## Quick Start
 
@@ -19,7 +19,7 @@ Welcome! 👋🏻<br/>
 Whether you are new to Go or an experienced Go developer, we hope this
 extension fits your needs and enhances your development experience.
 
-1.  Install [Go](https://go.dev) 1.18 or newer if you haven't already.
+1.  Install [Go](https://go.dev) 1.21 or newer if you haven't already.
 
 1.  Install the [VS Code Go extension].
 
@@ -95,7 +95,7 @@ extension.
 <br/><em>(Toggle Test File)</em></p>
 
 **⚠️ Note**: the default syntax highlighting for Go files is provided by a
-[TextMate rule](https://github.com/jeff-hykin/better-go-syntax) embedded in VS
+[TextMate rule](https://github.com/worlpaker/go-syntax) embedded in VS
 Code, not by this extension.
 
 For better syntax highlighting, we recommend enabling
@@ -125,15 +125,23 @@ modules or uncommon project layouts, you will need to configure your workspace
 by using [Workspace Folders]. See the
 [Supported workspace layouts documentation] for more information.
 
-## Preview version
+## Pre-release version
 
 If you'd like to get early access to new features and bug fixes, you can use the
-nightly build of this extension. Learn how to install it in by reading the
-[Go Nightly documentation](https://github.com/golang/vscode-go/wiki/nightly).
+pre-release extension. Following the vscode's [convention](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#prerelease-extensions),
+we use the minor version of the extension version number to distinguish stable
+and pre-release versions (`0.ODD_NUMBER.patch` for pre-release, `0.EVEN_NUMBER.patch`
+for stable release).
+
+To install the pre-release version, use the drop-down list
+to select "Install Pre-Release Version", or if already installed the Go extension,
+use the "Switch to Pre-Release Version" option in the Visual Studio Code
+extension management page. For more details about this mechanism, see the
+[Visual Studio Code's documentation](https://code.visualstudio.com/updates/v1_63#_pre-release-extensions).
 
 ## Telemetry
 
-VS Code Go extension relies on the [Go Telemetry](https://telemetry.go.dev) to
+VS Code Go extension relies on the [Go Telemetry](https://go.dev/doc/telemetry) to
 learn insights about the performance and stability of the extension and the
 language server (`gopls`).
 **Go Telemetry data uploading is disabled by default** and can be enabled
@@ -148,7 +156,7 @@ traces to [telemetry.go.dev](https://telemetry.go.dev). You can inspect what
 data is collected and can be uploaded by running:
 
 ```
-go run golang.org/x/telemetry/cmdgotelemetry@latest view
+go run golang.org/x/telemetry/cmd/gotelemetry@latest view
 ```
 
 If we get enough adoption, this data can significantly advance the pace of
@@ -171,9 +179,32 @@ of reliability. For example:
 These are just a few ways that telemetry can improve gopls. The [telemetry blog
 post series](https://research.swtch.com/telemetry-uses) contains many more.
 
-Go telemetry is designed to be transparent and privacy-preserving. If you have
-concerns about enabling telemetry, you can learn more at
-[https://telemetry.go.dev/privacy](https://telemetry.go.dev/privacy).
+Go telemetry is designed to be transparent and privacy-preserving. Learn more at
+[https://go.dev/doc/telemetry](https://go.dev/doc/telemetry).
+
+## Support Policy
+
+The Go extension is maintained by engineers on the
+[Go tools team](https://github.com/orgs/golang/teams/tools-team/members),
+who actively monitor the [VS Code Go](https://github.com/golang/vscode-go/issues)
+and the [Go](https://github.com/golang/go/issues?q=is%3Aissue+is%3Aopen+label%3Agopls)
+issue trackers.
+
+We support only the latest stable and pre-release versions of the extension.
+
+### Supported Go and tools
+
+The Go extension follows the [Go Release Policy](https://go.dev/doc/devel/release.html#policy),
+meaning that it _officially_ supports the two most recent major Go releases.
+The Go team maintains _best-effort_ support for the last three major Go versions.
+
+The Go extension relies on [tools](https://github.com/golang/vscode-go/wiki/tools)
+like `gopls` and `dlv` for its core functionalities and they have their own release
+policy and schedule. We test only against the latest versions of these tools.
+
+In case you need to work with an older version of Go, please check
+the [Compatibility] page and manually install the compatible version of
+the extension and tools.
 
 ## Contributing
 
@@ -204,6 +235,7 @@ conduct-related issue, please mail conduct@golang.org.
 [IntelliSense]: https://github.com/golang/vscode-go/wiki/features#intellisense
 [Code navigation]: https://github.com/golang/vscode-go/wiki/features#code-navigation
 [Code editing]: https://github.com/golang/vscode-go/wiki/features#code-editing
+[Compatibility]: https://github.com/golang/vscode-go/wiki/compatibility
 [diagnostics]: https://github.com/golang/vscode-go/wiki/features#diagnostics
 [testing]: https://github.com/golang/vscode-go/wiki/features#run-and-test-in-the-editor
 [debugging]: https://github.com/golang/vscode-go/wiki/debugging#features

@@ -9,8 +9,10 @@ import { describe, it } from 'mocha';
 import {
 	GOPLS_MAYBE_PROMPT_FOR_TELEMETRY,
 	TELEMETRY_START_TIME_KEY,
+	TelemetryKey,
 	TelemetryReporter,
-	TelemetryService
+	TelemetryService,
+	recordTelemetryStartTime
 } from '../../src/goTelemetry';
 import { MockMemento } from '../mocks/MockMemento';
 import { maybeInstallVSCGO } from '../../src/goInstallTools';
@@ -21,16 +23,18 @@ import os = require('os');
 import { rmdirRecursive } from '../../src/util';
 import { extensionId } from '../../src/const';
 import { executableFileExists, fileExists } from '../../src/utils/pathUtils';
-import { ExtensionMode } from 'vscode';
+import { ExtensionMode, Memento, extensions } from 'vscode';
 
-describe('# prompt for telemetry', () => {
+describe('# prompt for telemetry', async () => {
+	const extension = extensions.getExtension(extensionId);
+	assert(extension);
+
 	it(
 		'do not prompt if language client is not used',
 		testTelemetryPrompt(
 			{
 				noLangClient: true,
-				previewExtension: true,
-				samplingInterval: 1000
+				previewExtension: true
 			},
 			false
 		)
@@ -40,8 +44,7 @@ describe('# prompt for telemetry', () => {
 		testTelemetryPrompt(
 			{
 				goplsWithoutTelemetry: true,
-				previewExtension: true,
-				samplingInterval: 1000
+				previewExtension: true
 			},
 			false
 		)
@@ -50,8 +53,7 @@ describe('# prompt for telemetry', () => {
 		'prompt when telemetry started a while ago',
 		testTelemetryPrompt(
 			{
-				firstDate: new Date('2022-01-01'),
-				samplingInterval: 1000
+				firstDate: new Date('2022-01-01')
 			},
 			true
 		)
@@ -60,8 +62,7 @@ describe('# prompt for telemetry', () => {
 		'do not prompt if telemetry started two days ago',
 		testTelemetryPrompt(
 			{
-				firstDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // two days ago!
-				samplingInterval: 1000
+				firstDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) // two days ago!
 			},
 			false
 		)
@@ -70,40 +71,7 @@ describe('# prompt for telemetry', () => {
 		'do not prompt if gopls with telemetry never ran',
 		testTelemetryPrompt(
 			{
-				firstDate: undefined, // gopls with telemetry not seen before.
-				samplingInterval: 1000
-			},
-			false
-		)
-	);
-	it(
-		'do not prompt if not sampled',
-		testTelemetryPrompt(
-			{
-				firstDate: new Date('2022-01-01'),
-				samplingInterval: 0
-			},
-			false
-		)
-	);
-	it(
-		'prompt only if sampled (machineID = 0, samplingInterval = 1)',
-		testTelemetryPrompt(
-			{
-				firstDate: new Date('2022-01-01'),
-				samplingInterval: 1,
-				hashMachineID: 0
-			},
-			true
-		)
-	);
-	it(
-		'prompt only if sampled (machineID = 1, samplingInterval = 1)',
-		testTelemetryPrompt(
-			{
-				firstDate: new Date('2022-01-01'),
-				samplingInterval: 1,
-				hashMachineID: 1
+				firstDate: undefined // gopls with telemetry not seen before.
 			},
 			false
 		)
@@ -113,8 +81,7 @@ describe('# prompt for telemetry', () => {
 		testTelemetryPrompt(
 			{
 				firstDate: new Date('2022-01-01'),
-				previewExtension: true,
-				samplingInterval: 0
+				previewExtension: true
 			},
 			true
 		)
@@ -125,12 +92,26 @@ describe('# prompt for telemetry', () => {
 			{
 				firstDate: new Date('2022-01-01'),
 				vsTelemetryDisabled: true,
-				previewExtension: true,
-				samplingInterval: 1000
+				previewExtension: true
 			},
 			false
 		)
 	);
+	// testExtensionAPI.globalState is a real memento instance passed by ExtensionHost.
+	// This instance is active throughout the integration test.
+	// When you add more test cases that interact with the globalState,
+	// be aware that multiple test cases may access and mutate it asynchronously.
+	const testExtensionAPI = await extension.activate();
+	it('check we can salvage the value in the real memento', async () => {
+		// write Date with Memento.update - old way. Now we always use string for TELEMETRY_START_TIME_KEY value.
+		testExtensionAPI.globalState.update(TELEMETRY_START_TIME_KEY, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+		await testTelemetryPrompt(
+			{
+				mementoInstance: testExtensionAPI.globalState
+			},
+			true
+		)();
+	});
 });
 
 interface testCase {
@@ -139,8 +120,7 @@ interface testCase {
 	firstDate?: Date; // first date the extension observed gopls with telemetry feature.
 	previewExtension?: boolean; // assume we are in dev/nightly extension.
 	vsTelemetryDisabled?: boolean; // assume the user disabled vscode general telemetry.
-	samplingInterval: number; // N where N out of 1000 are sampled.
-	hashMachineID?: number; // stub the machine id hash computation function.
+	mementoInstance?: Memento; // if set, use this instead of mock memento.
 }
 
 function testTelemetryPrompt(tc: testCase, wantPrompt: boolean) {
@@ -153,17 +133,14 @@ function testTelemetryPrompt(tc: testCase, wantPrompt: boolean) {
 		const spy = sinon.spy(languageClient, 'sendRequest');
 		const lc = tc.noLangClient ? undefined : languageClient;
 
-		const memento = new MockMemento();
+		const memento = tc.mementoInstance ?? new MockMemento();
 		if (tc.firstDate) {
-			memento.update(TELEMETRY_START_TIME_KEY, tc.firstDate);
+			recordTelemetryStartTime(memento, tc.firstDate);
 		}
 		const commands = tc.goplsWithoutTelemetry ? [] : [GOPLS_MAYBE_PROMPT_FOR_TELEMETRY];
 
 		const sut = new TelemetryService(lc, memento, commands);
-		if (tc.hashMachineID !== undefined) {
-			sinon.stub(sut, 'hashMachineID').returns(tc.hashMachineID);
-		}
-		await sut.promptForTelemetry(!!tc.previewExtension, !tc.vsTelemetryDisabled, tc.samplingInterval);
+		await sut.promptForTelemetry(!tc.vsTelemetryDisabled);
 		if (wantPrompt) {
 			sinon.assert.calledOnce(spy);
 		} else {
@@ -173,9 +150,7 @@ function testTelemetryPrompt(tc: testCase, wantPrompt: boolean) {
 }
 
 describe('# telemetry reporter using vscgo', async function () {
-	if (os.platform() === 'win32') {
-		this.timeout(10000); // go install is slow on windows builder.
-	}
+	this.timeout(20000); // go install can be slow.
 	// installVSCGO expects
 	//   {extensionPath}/vscgo: vscgo source code for testing.
 	//   {extensionPath}/bin: where compiled vscgo will be stored.
@@ -199,6 +174,7 @@ describe('# telemetry reporter using vscgo', async function () {
 		} catch (e) {
 			assert.fail(`failed to install vscgo needed for testing: ${e}`);
 		}
+		console.log(`vscgo installed: ${vscgo}`);
 	});
 	suiteTeardown(() => {
 		rmdirRecursive(tmpDir);
@@ -214,8 +190,8 @@ describe('# telemetry reporter using vscgo', async function () {
 	});
 
 	it('add succeeds before telemetryReporter.setTool runs', () => {
-		sut.add('hello', 1);
-		sut.add('world', 2);
+		sut.add(TelemetryKey.VSCGO_INSTALL, 1);
+		sut.add(TelemetryKey.VSCGO_INSTALL_FAIL, 2);
 	});
 
 	it('flush is noop before setTool', async () => {
@@ -227,13 +203,13 @@ describe('# telemetry reporter using vscgo', async function () {
 		sut.setTool(vscgo);
 		await sut.flush();
 		const readAll = fs.readFileSync(counterfile).toString();
-		assert(readAll.includes('hello 1\n') && readAll.includes('world 2\n'), readAll);
+		assert(readAll.includes('vscgo_install 1\n') && readAll.includes('vscgo_install_fail 2\n'), readAll);
 	});
 
 	it('dispose triggers flush', async () => {
-		sut.add('bye', 3);
+		sut.add(TelemetryKey.ACTIVATION_LATENCY_GE_5S, 3);
 		await sut.dispose();
 		const readAll = fs.readFileSync(counterfile).toString();
-		assert(readAll.includes('bye 3\n'), readAll);
+		assert(readAll.includes('activation_latency:>=5s 3\n'), readAll);
 	});
 });
