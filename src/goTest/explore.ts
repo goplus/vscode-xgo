@@ -48,10 +48,10 @@ export class GoTestExplorer {
 		});
 
 		context.subscriptions.push(ctrl);
-		// xgols: : conflicts fix (registerTreeDataProvider)
+		// xgols: conflicts fix (registerTreeDataProvider)
 		context.subscriptions.push(vscode.window.registerTreeDataProvider('gop.test.profile', inst.profiler.view));
 
-		// xgols: : conflicts fix
+		// xgols: conflicts fix
 		context.subscriptions.push(
 			vscode.commands.registerCommand('gop.test.refresh', async (item) => {
 				if (!item) {
@@ -72,7 +72,7 @@ export class GoTestExplorer {
 		);
 
 		context.subscriptions.push(
-			// xgols: : conflicts fix
+			// xgols: conflicts fix
 			vscode.commands.registerCommand('gop.test.showProfiles', async (item) => {
 				if (!item) {
 					await vscode.window.showErrorMessage('No test selected');
@@ -91,7 +91,7 @@ export class GoTestExplorer {
 		);
 
 		context.subscriptions.push(
-			// xgols: : conflicts fix
+			// xgols: conflicts fix
 			vscode.commands.registerCommand('gop.test.captureProfile', async (item) => {
 				if (!item) {
 					await vscode.window.showErrorMessage('No test selected');
@@ -116,7 +116,7 @@ export class GoTestExplorer {
 		);
 
 		context.subscriptions.push(
-			// xgols: : conflicts fix
+			// xgols: conflicts fix
 			vscode.commands.registerCommand('gop.test.deleteProfile', async (file) => {
 				if (!file) {
 					await vscode.window.showErrorMessage('No profile selected');
@@ -136,7 +136,7 @@ export class GoTestExplorer {
 		);
 
 		context.subscriptions.push(
-			// xgols: : conflicts fix
+			// xgols: conflicts fix
 			vscode.commands.registerCommand('gop.test.showProfileFile', async (file: Uri) => {
 				return inst.profiler.showFile(file.fsPath);
 			})
