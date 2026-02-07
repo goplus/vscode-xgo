@@ -82,6 +82,21 @@ export const goBuiltinTypes: Set<string> = new Set<string>([
 	'uintptr'
 ]);
 
+export const xgoExts = new Set(['.go', '.xgo', '.gox', '.spx', '.yap', '.gsh', '.rdx', '.gmx', '.gop']);
+
+export function isXGoFile(file: string): boolean {
+	return xgoExts.has(path.extname(file));
+}
+
+export function isXGoTestFile(file: string): boolean {
+	return (
+		file.endsWith('_test.go') ||
+		file.endsWith('_test.xgo') ||
+		file.endsWith('test.gox') ||
+		file.endsWith('_test.gop')
+	);
+}
+
 export class GoVersion {
 	public sv?: semver.SemVer;
 	// Go version tags are not following the strict semver format
@@ -161,8 +176,8 @@ let toolsGopath: string;
 export function getCheckForToolsUpdatesConfig(gocfg: vscode.WorkspaceConfiguration) {
 	// useGoProxyToCheckForToolUpdates deprecation
 	// TODO: Step 1. mark as deprecated in Dec 2020 release, and update dev containers.
-	//       Step 2. prompt users to switch config. Jan 2020
-	//       Step 3. delete useGoProxyToCheckForToolUpdates support. Feb 2020
+	//	   Step 2. prompt users to switch config. Jan 2020
+	//	   Step 3. delete useGoProxyToCheckForToolUpdates support. Feb 2020
 	const legacyCfg = gocfg.get('useGoProxyToCheckForToolUpdates');
 	if (legacyCfg === false) {
 		const cfg = gocfg.inspect('toolsManagement.checkForUpdates');
@@ -222,11 +237,11 @@ export function parseFilePrelude(text: string): Prelude {
 }
 
 // Takes a Go function signature like:
-//     (foo, bar string, baz number) (string, string)
+//	 (foo, bar string, baz number) (string, string)
 // and returns an array of parameter strings:
-//     ["foo", "bar string", "baz string"]
+//	 ["foo", "bar string", "baz string"]
 // Takes care of balancing parens so to not get confused by signatures like:
-//     (pattern string, handler func(ResponseWriter, *Request)) {
+//	 (pattern string, handler func(ResponseWriter, *Request)) {
 export function getParametersAndReturnType(signature: string): { params: string[]; returnType: string } {
 	const params: string[] = [];
 	let parenCount = 0;
@@ -347,7 +362,7 @@ export async function getGoVersion(goBinPath?: string): Promise<GoVersion> {
 		error(`cached Go version (${JSON.stringify(cachedGoVersion)}) is invalid, recomputing`);
 	}
 	const docUri = vscode.window.activeTextEditor?.document.uri;
-	const cond = docUri && (docUri.fsPath.endsWith('.go') || docUri.fsPath.endsWith('.gop'));
+	const cond = docUri && isXGoFile(docUri.fsPath);
 	const cwd = getWorkspaceFolderPath(cond ? docUri : undefined);
 
 	let goVersion: GoVersion | undefined;
@@ -510,8 +525,8 @@ export function substituteEnv(input: string): string {
 	});
 }
 
-export function getCurrentGopRoot(workspaceUri?: vscode.Uri): string {
-	const buf = cp.execSync('gop env GOPROOT');
+export function getCurrentXGoRoot(workspaceUri?: vscode.Uri): string {
+	const buf = cp.execSync('xgo env XGOROOT');
 	return buf.toString();
 }
 

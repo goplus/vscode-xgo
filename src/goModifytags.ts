@@ -92,8 +92,8 @@ function getCommonArgs(): string[] {
 		vscode.window.showInformationMessage('No editor is active.');
 		return [];
 	}
-	if (!editor.document.fileName.endsWith('.go') && !editor.document.fileName.endsWith('.gop')) {
-		vscode.window.showInformationMessage('Current file is not a Go file.');
+	if (!editor.document.fileName.endsWith('.go') && editor.document.languageId !== 'gop') {
+		vscode.window.showInformationMessage('Current file is not a Go/XGo file.');
 		return [];
 	}
 	const args = ['-modified', '-file', editor.document.fileName, '-format', 'json'];

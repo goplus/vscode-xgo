@@ -15,6 +15,7 @@ import { GoDocumentSymbolProvider } from './goDocumentSymbols';
 import { getBenchmarkFunctions, getTestFunctions } from './testUtils';
 import { GoExtensionContext } from './context';
 import { GO_MODE, GOP_MODE } from './goMode';
+import { isXGoTestFile } from './util';
 
 export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 	static activate(ctx: vscode.ExtensionContext, goCtx: GoExtensionContext) {
@@ -47,7 +48,7 @@ export class GoRunTestCodeLensProvider extends GoBaseCodeLensProvider {
 		const config = getGoConfig(document.uri);
 		const codeLensConfig = config.get<{ [key: string]: any }>('enableCodeLens');
 		const codelensEnabled = codeLensConfig ? codeLensConfig['runtest'] : false;
-		if (!codelensEnabled || (!document.fileName.endsWith('_test.go') && !document.fileName.endsWith('_test.gop'))) {
+		if (!codelensEnabled || !isXGoTestFile(document.fileName)) {
 			return [];
 		}
 

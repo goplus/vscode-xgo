@@ -25,6 +25,7 @@ import { GoTestResolver, ProvideSymbols } from './resolve';
 import { GoTestRunner } from './run';
 import { GoTestProfiler } from './profile';
 import { GoExtensionContext } from '../context';
+import { isXGoTestFile } from '../util';
 
 // Set true only if the Testing API is available (VSCode version >= 1.59).
 export const isVscodeTestingAPIAvailable =
@@ -314,7 +315,7 @@ export class GoTestExplorer {
 
 	// Handle opened documents, document changes, and file creation.
 	private async documentUpdate(doc: TextDocument, ranges?: Range[]) {
-		if (!doc.uri.path.endsWith('_test.go') && !doc.uri.path.endsWith('_test.gop')) {
+		if (!isXGoTestFile(doc.uri.path)) {
 			return;
 		}
 

@@ -27,7 +27,7 @@ jobs:
          node-version: '18'
          cache: 'npm'
 
-      - name: Setup Go/Go+
+      - name: Setup Go/XGo
         uses: goplus/setup-goplus@v1.1.0
         with:
          go-version: '1.21'

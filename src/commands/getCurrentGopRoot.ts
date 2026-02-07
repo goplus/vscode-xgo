@@ -6,7 +6,7 @@
 import * as vscode from 'vscode';
 
 import { CommandFactory } from '.';
-import { getCurrentGopRoot as utilGetCurrentGopRoot } from '../util';
+import { getCurrentXGoRoot as utilGetCurrentGopRoot } from '../util';
 
 export const getCurrentGopRoot: CommandFactory = () => {
 	return () => {

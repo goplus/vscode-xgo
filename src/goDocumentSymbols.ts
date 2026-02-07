@@ -8,6 +8,7 @@ import { ExecuteCommandParams, ExecuteCommandRequest } from 'vscode-languageserv
 import { getGoConfig } from './config';
 import { GoExtensionContext } from './context';
 import { GoLegacyDocumentSymbolProvider } from './language/legacy/goOutline';
+import { isXGoTestFile } from './util';
 
 export function GoDocumentSymbolProvider(
 	goCtx: GoExtensionContext,
@@ -60,8 +61,8 @@ export class GoplsDocumentSymbolProvider implements vscode.DocumentSymbolProvide
 			const start = text.indexOf(packageDecl);
 			pkgDeclRng = new vscode.Range(document.positionAt(start), document.positionAt(start + packageDecl.length));
 			pkgName = packageDecl[1];
-		} else if (document.fileName.endsWith('_test.gop') || document.fileName.endsWith('test.gox')) {
-			pkgName = 'main'; // goxls: default test pkg
+		} else if (isXGoTestFile(document.fileName)) {
+			pkgName = 'main'; // xgols: default test pkg
 		}
 		const packageSymbol = new vscode.DocumentSymbol(
 			pkgName,

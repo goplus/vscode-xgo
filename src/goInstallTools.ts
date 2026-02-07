@@ -271,7 +271,7 @@ async function installToolWithGo(
 		if (hasModSuffix(tool)) {
 			await installToolWithGoGet(tool, goVersion, env, importPath);
 		} else if (useGop) {
-			await installToolWithGopInstall(goVersion, env, importPath);
+			await installToolWithXGoInstall(goVersion, env, importPath);
 		} else {
 			await installToolWithGoInstall(goVersion, env, importPath);
 		}
@@ -298,10 +298,10 @@ async function installToolWithGoInstall(goVersion: GoVersion, env: NodeJS.Dict<s
 	await execFile(goBinary, ['install', '-v', importPath], opts);
 }
 
-async function installToolWithGopInstall(goVersion: GoVersion, env: NodeJS.Dict<string>, importPath: string) {
+async function installToolWithXGoInstall(goVersion: GoVersion, env: NodeJS.Dict<string>, importPath: string) {
 	// Unlike installToolWithGoGet, `go install` in module mode
 	// can run in the current directory safely. So, use the user-specified go tool path.
-	const goBinary = getBinPath('gop');
+	const goBinary = getBinPath('xgo');
 	const opts = {
 		env,
 		cwd: getWorkspaceFolderPath()

@@ -25,7 +25,7 @@ import { packagePathToGoModPathMap } from './goModules';
 import { getToolAtVersion } from './goTools';
 import { pickGoProcess, pickProcess, pickProcessByName } from './pickProcess';
 import { getFromGlobalState, updateGlobalState } from './stateUtils';
-import { getBinPath, getGoVersion } from './util';
+import { getBinPath, getGoVersion, isXGoFile, isXGoTestFile } from './util';
 import { parseArgsString } from './utils/argsUtil';
 import { parseEnvFiles } from './utils/envUtils';
 import { resolveHomeDir } from './utils/pathUtils';
@@ -200,7 +200,7 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 			} else if (debugConfiguration['port']) {
 				this.showWarning(
 					'ignorePortUsedInDlvDapWarning',
-					"`port` with 'dlv-dap' debugAdapter connects to [an external `dlv dap` server](https://github.com/goplus/vscode-gop/blob/goplus/docs/debugging.md#running-debugee-externally) to launch a program or attach to a process. Remove 'host' and 'port' from your launch.json if you have not launched a 'dlv dap' server."
+					"`port` with 'dlv-dap' debugAdapter connects to [an external `dlv dap` server](https://github.com/goplus/vscode-xgo/blob/xgo/docs/debugging.md#running-debugee-externally) to launch a program or attach to a process. Remove 'host' and 'port' from your launch.json if you have not launched a 'dlv dap' server."
 				);
 			}
 		}
@@ -332,14 +332,10 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				// file path instead of the currently active file.
 				filename = program;
 			}
-			debugConfiguration['mode'] =
-				filename?.endsWith('_test.go') || filename?.endsWith('_test.gop') ? 'test' : 'debug';
+			debugConfiguration['mode'] = filename && isXGoTestFile(filename) ? 'test' : 'debug';
 		}
 
-		if (
-			debugConfiguration['mode'] === 'test' &&
-			(debugConfiguration['program'].endsWith('_test.go') || debugConfiguration['program'].endsWith('_test.gop'))
-		) {
+		if (debugConfiguration['mode'] === 'test' && isXGoTestFile(debugConfiguration['program'])) {
 			// Running a test file in file mode does not make sense, so change the program
 			// to the directory.
 			debugConfiguration['program'] = path.dirname(debugConfiguration['program']);
@@ -543,8 +539,7 @@ export function parseDebugProgramArgSync(
 		if (pstats.isDirectory()) {
 			return { program, dirname: program, programIsDirectory: true };
 		}
-		const ext = path.extname(program);
-		if (ext === '.go' || ext === '.gop') {
+		if (isXGoFile(program)) {
 			// TODO(hyangah): .s?
 			return { program, dirname: path.dirname(program), programIsDirectory: false };
 		}

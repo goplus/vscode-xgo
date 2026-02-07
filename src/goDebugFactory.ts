@@ -631,9 +631,9 @@ function getSpawnConfig(launchAttachArgs: vscode.DebugConfiguration, logErr: (ms
 			`Couldn't find ${dlvPath} at the Go tools path, ${process.env['GOPATH']}${
 				env['GOPATH'] ? ', ' + env['GOPATH'] : ''
 			} or ${envPath}\n` +
-				'Follow the setup instruction in https://github.com/goplus/vscode-gop/blob/goplus/docs/debugging.md#getting-started.\n'
+				'Follow the setup instruction in https://github.com/goplus/vscode-xgo/blob/xgo/docs/debugging.md#getting-started.\n'
 		);
-		throw new Error('Cannot find Go/Go+ debugger (gopdlv dap)');
+		throw new Error('Cannot find Go/XGo debugger (gopdlv dap)');
 	}
 	let dir = getWorkspaceFolderPath();
 	if (launchAttachArgs.request === 'launch' && launchAttachArgs['__buildDir']) {

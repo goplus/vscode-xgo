@@ -62,7 +62,7 @@ import { URI } from 'vscode-uri';
 import { VulncheckReport, writeVulns } from '../goVulncheck';
 import { createHash } from 'crypto';
 import { GoExtensionContext } from '../context';
-import { runGopCommand } from '../gopCommand';
+import { runXGoCommand } from '../gopCommand';
 
 export interface LanguageServerConfig {
 	serverName: string;
@@ -429,8 +429,8 @@ export async function buildLanguageClient(
 	const documentSelector = [
 		// gopls handles only file URIs.
 		{ language: 'go', scheme: 'file' },
-		{ language: 'gop', scheme: 'file' }, // goxls: Go+
-		{ language: 'gop.mod', scheme: 'file' }, // goxls: Go+
+		{ language: 'gop', scheme: 'file' }, // xgols: XGo
+		{ language: 'gop.mod', scheme: 'file' }, // xgols: XGo
 		{ language: 'go.mod', scheme: 'file' },
 		{ language: 'go.sum', scheme: 'file' },
 		{ language: 'go.work', scheme: 'file' },
@@ -558,7 +558,7 @@ export async function buildLanguageClient(
 						}
 						if (command === 'gopls.run_gop_command') {
 							await vscode.workspace.saveAll(false);
-							if (runGopCommand(vscode.Uri.parse(args[0].URI).fsPath, args[0].Command, args[0].Args)) {
+							if (runXGoCommand(vscode.Uri.parse(args[0].URI).fsPath, args[0].Command, args[0].Args)) {
 								return;
 							}
 						}
