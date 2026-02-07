@@ -332,14 +332,10 @@ export class GoDebugConfigurationProvider implements vscode.DebugConfigurationPr
 				// file path instead of the currently active file.
 				filename = program;
 			}
-			debugConfiguration['mode'] =
-				filename && isXGoTestFile(filename) ? 'test' : 'debug';
+			debugConfiguration['mode'] = filename && isXGoTestFile(filename) ? 'test' : 'debug';
 		}
 
-		if (
-			debugConfiguration['mode'] === 'test' &&
-			isXGoTestFile(debugConfiguration['program'])
-		) {
+		if (debugConfiguration['mode'] === 'test' && isXGoTestFile(debugConfiguration['program'])) {
 			// Running a test file in file mode does not make sense, so change the program
 			// to the directory.
 			debugConfiguration['program'] = path.dirname(debugConfiguration['program']);

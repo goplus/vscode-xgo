@@ -89,7 +89,12 @@ export function isXGoFile(file: string): boolean {
 }
 
 export function isXGoTestFile(file: string): boolean {
-	return file.endsWith('_test.go') || file.endsWith('_test.xgo') || file.endsWith('test.gox') || file.endsWith('_test.gop');
+	return (
+		file.endsWith('_test.go') ||
+		file.endsWith('_test.xgo') ||
+		file.endsWith('test.gox') ||
+		file.endsWith('_test.gop')
+	);
 }
 
 export class GoVersion {
